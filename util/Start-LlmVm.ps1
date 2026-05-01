@@ -18,7 +18,7 @@
 
   az login
   $VerbosePreference = 'Continue'
-  ./c-workload/Start-LlmVm.ps1
+  ./util/Start-LlmVm.ps1
 #>
 [CmdletBinding()]
 param (
@@ -27,6 +27,13 @@ param (
     [string]$Environment = $ENV:DEPLOY_ENVIRONMENT ?? 'Dev',
     [string]$Instance    = $ENV:DEPLOY_INSTANCE    ?? '001'
 )
+
+<#
+    [string]$Purpose     = $ENV:DEPLOY_PURPOSE     ?? 'LLM'
+    [string]$Workload    = $ENV:DEPLOY_WORKLOAD    ?? 'workload'
+    [string]$Environment = $ENV:DEPLOY_ENVIRONMENT ?? 'Dev'
+    [string]$Instance    = $ENV:DEPLOY_INSTANCE    ?? '001'
+#>
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -41,8 +48,8 @@ if (-not $vm) {
     exit 0
 }
 
-$instance = az vm get-instance-view --name $vmName --resource-group $rgName 2>$null | ConvertFrom-Json
-$powerState = ($instance.instanceView.statuses | Where-Object { $_.code -like 'PowerState/*' } | Select-Object -First 1).code
+$vmInstance = (az vm get-instance-view --name $vmName --resource-group $rgName 2>$null) | ConvertFrom-Json
+$powerState = ($vmInstance.instanceView.statuses | Where-Object { $_.code -like 'PowerState/*' } | Select-Object -First 1).code
 Write-Verbose "Current power state: $powerState"
 if ($powerState -eq 'PowerState/running') {
     Write-Verbose "VM '$vmName' is already running; nothing to do."

@@ -45,8 +45,8 @@ if (-not $vm) {
 }
 
 # Inspect power state. Idempotency: only call deallocate if not already deallocated.
-$instance = az vm get-instance-view --name $vmName --resource-group $rgName 2>$null | ConvertFrom-Json
-$powerState = ($instance.instanceView.statuses | Where-Object { $_.code -like 'PowerState/*' } | Select-Object -First 1).code
+$vmInstance = az vm get-instance-view --name $vmName --resource-group $rgName 2>$null | ConvertFrom-Json
+$powerState = ($vmInstance.instanceView.statuses | Where-Object { $_.code -like 'PowerState/*' } | Select-Object -First 1).code
 Write-Verbose "Current power state: $powerState"
 if ($powerState -eq 'PowerState/deallocated') {
     Write-Verbose "VM '$vmName' is already deallocated; nothing to do."

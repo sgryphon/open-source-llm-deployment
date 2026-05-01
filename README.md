@@ -156,13 +156,7 @@ Also see: https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cloud-in
 
 SSH is configured as part of server creation.
 
-However if you want to change to a different key you can manually configure, by generating:
-
-```pwsh
-ssh-keygen -t rsa -b 4096
-```
-
-Then uploading the public key to the server:
+If you want to change to a different key you can manually uploading a new public key to the server:
 
 ```pwsh
 az vm user update `
@@ -170,6 +164,12 @@ az vm user update `
   --ssh-key-value ~/.ssh/id_rsa.pub `
   --resource-group rg-llm-workload-dev-001 `
   --name vmvllmdev001
+```
+
+If you don't have a key, and need to create a new one:
+
+```pwsh
+ssh-keygen -t rsa -b 4096
 ```
 
 ## Notes

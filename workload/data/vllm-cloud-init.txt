@@ -7,23 +7,12 @@
 # The model bytes are NOT downloaded by cloud-init: they are placed onto
 # the persistent data disk later via util/Import-LlmModel.ps1.
 
-apt:
-  conf: |
-    Acquire::Retries "120";
-    DPkg::Lock::Timeout "120";
-
-package_update: true
-package_upgrade: false
-packages:
-  - certbot
-  - python3-venv
-  - python3-pip
-  - libcap2-bin
-  - jq
-  - curl
-  - e2fsprogs
-
 runcmd:
+  # packages
+  - apt update
+  - apt upgrade
+  - apt install certbot python3-venv python3-pip libcap2-bin jq e2fsprogs -y
+
   # Firewall: only SSH and vLLM HTTP/S.
   - ufw allow ssh
   - ufw allow http
