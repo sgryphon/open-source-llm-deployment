@@ -8,10 +8,30 @@
 # the persistent data disk later via util/Import-LlmModel.ps1.
 
 runcmd:
+  # Wait for apt-daily services to finish; they auto-run on first boot and hold the dpkg lock.
+  - |
+    for svc in apt-daily.service apt-daily-upgrade.service; do
+      if systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+        echo "Waiting for $svc to finish..."
+        while systemctl is-active --quiet "$svc"; do
+          sleep 5
+        done
+        echo "$svc finished."
+      fi
+    done
+
   # packages
-  - apt update
-  - apt upgrade
-  - apt install certbot python3-venv python3-pip libcap2-bin jq e2fsprogs -y
+  - |
+    echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') Starting package installation..."
+    while true; do
+      if apt install certbot python3-venv python3-pip libcap2-bin jq e2fsprogs -y; then
+        echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') Package installation succeeded."
+        break
+      else
+        echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') Package installation failed, retrying in 30 seconds..."
+        sleep 30
+      fi
+    done
 
   # Firewall: only SSH and vLLM HTTP/S.
   - ufw allow ssh
