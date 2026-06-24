@@ -22,7 +22,7 @@
 			"version": "os-provided"
 		},
         "ghcr.io/devcontainers/features/node:1": {},
-        "ghcr.io/devcontainers-contrib/features/apt-packages:1": {
+        "ghcr.io/devcontainers-extra/features/apt-packages:1": {
             "packages": "openssl,strongswan-pki,iputils-ping,traceroute,iputils-tracepath"
         }
 	},
