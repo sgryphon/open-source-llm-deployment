@@ -33,20 +33,36 @@ Addresses are derived deterministically with an IPv6 ULA Global ID 10-hex-charac
 prefix based on the subscription ID, plus the vnetId for a /56 range. IPv4 assigns a
 10.vnetId.0.0/16 range.
 
+## Deploy shared services -- Azure Key Vault
 
-az deployment sub create `
-  --location australiaeast `
-  --template-file ./get-subscription-unique.bicep `
-  --parameters seed="myCustomSeed3" `
-  --query "properties.outputs.unique.value" `
-  --output tsv
+Deploy at the resource group level to create:
 
-## Workload
+- Azure Key Vault `kv-<orgId>-llm-dev-01`
+
+```pwsh
+$orgId = $subscriptionUnique.Substring(0, 6).ToLower()
+./Deploy-SharedServices.ps1 -OrgId $orgId
+```
+
+OrgId is used where names need to be globally unique (such as the Key Vault URI), i.e. if this example is deployed into multiple subscriptions.
+
+## Deploy vLLM virtual machine, with disk, and subnet
 
 DNS host names:
 
 - "llm-<OrgId>-dev-001.australiaeast.cloudapp.azure.com"
 - "llm-<OrgId>-dev-001-ipv4.australiaeast.cloudapp.azure.com"
+
+Deploy at the resource group level to create:
+
+- Managed Identity `id-vmvllmdev001`, with permission to KeyVault | Identity for the VPN gateway server, with permission to shared Key Vault. |
+- Network Security Group | nsg-llm-workload-dev-001 | Security group for gateway subnet. |
+- Disk | diskmodeldev001 | Data disk for model download; can detach and persist if server recreated. |
+- Public IP | pip-vmvllmdev001-australiaeast-01 | Public IPv6; persists across server rebuild. |
+- Public IP | pipv4-vmvllmdev001-australiaeast-01 | Public IPv4; persists across server rebuild. |
+- Network Interface | nic-vmvllmdev001-01 | Separate NIC, so that IP addresses can be retained if server is recreated. |
+- Virtual Machine | vmvllmdev001 | vLLM virtual machine. |
+- Disk | osdiskvmvllmdev001 | OS disk for the VM. |
 
 The following subnet ranges are allocated:
 
@@ -76,8 +92,7 @@ Required secrets and certificates are stored in the shared Key Vault.
 
 The virtual machine is configured to shut down automatically (based on Brisbane, Australia time), to save costs.
 
-
-
+$VllmApiKey = 'qwen_deadbeef0001'
 
 ## Shared services
 
@@ -127,7 +142,6 @@ Default machine size is 'Standard_D2s_v6'.
 Required secrets and certificates are stored in the shared Key Vault.
 
 The virtual machine is configured to shut down automatically (based on Brisbane, Australia time), to save costs.
-
 
 ## Troubleshooting
 
@@ -203,9 +217,6 @@ You can duplicate them in your own subscription, or resource group, but shared i
 
 ## Scripted deployment
 
-
-
-
 ## Ideas
 
 - Basic Azure VM with small LLM, zero trust connection
@@ -214,4 +225,3 @@ You can duplicate them in your own subscription, or resource group, but shared i
 - Azure Factory (pre-packaged)... not sure if any are open source
 - AWS VM with LLM
 - AWS Bedrock
-
