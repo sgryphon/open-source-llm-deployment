@@ -130,11 +130,20 @@ SSH to the machine, and you can test the model locally:
 
 ```sh
 ls /opt/models
+nvidia-smi
 sudo systemctl status vllm --no-pager
 sudo ss -ltnp | grep :443
 sudo cat /etc/vllm/vllm.env
 curl -k -H "Authorization: Bearer qwen_deadbeef0001" https://localhost/v1/models
 sudo journalctl -u vllm -n 200 --no-pager
+```
+
+Troubleshooting Nvidia, e.g. check the CUDA versions match:
+
+```sh
+nvidia-smi
+cat /proc/driver/nvidia/version
+/opt/vllm/.venv/bin/python -c "import torch; print(torch.__version__, torch.version.cuda)"
 ```
 
 Also test remote access:
@@ -154,6 +163,7 @@ Detach the model disk, then rebuild:
 
 ```pwsh
 ./Dismount-LlmModelDisk.ps1
-az vm delete --resource-group rg-llm-workload-dev-01 --name vmvllmdev01 --data-disk-delete-option delete --yes
+az vm delete --resource-group rg-llm-workload-dev-01 --name vmvllmdev01 --yes
+az disk delete --resource-group rg-llm-workload-dev-01 --name osdiskvmvllmdev01 --yes
 ./Deploy-VllmQwen.ps1 -VllmApiKey $vllmApiKey -OrgId $orgId -UlaGlobalId $ulaGlobalId -VnetIndex 17
 ```

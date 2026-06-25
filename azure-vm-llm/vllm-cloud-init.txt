@@ -47,10 +47,13 @@ runcmd:
   - useradd --system --create-home --home-dir /var/lib/vllm --shell /usr/sbin/nologin vllm
   - chown vllm:vllm #INIT_MODEL_MOUNT_POINT#
 
+  # install uv
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - export PATH="/root/.local/bin:$PATH"
+
   # venv + vLLM install.
-  - python3 -m venv /opt/vllm/.venv
-  - /opt/vllm/.venv/bin/pip install --upgrade pip
-  - /opt/vllm/.venv/bin/pip install "vllm==#INIT_VLLM_VERSION#"
+  - /root/.local/bin/uv venv --python 3.10 /opt/vllm/.venv
+  - /root/.local/bin/uv pip install --python /opt/vllm/.venv/bin/python "vllm==#INIT_VLLM_VERSION#" --torch-backend=#INIT_VLLM_CUDA_VARIANT#
   - chown -R vllm:vllm /opt/vllm
 
   # setcap so vllm can bind :443 without root.

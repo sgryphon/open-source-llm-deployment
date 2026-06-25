@@ -49,6 +49,8 @@ param (
   [string]$OrgId = $ENV:DEPLOY_ORGID ?? "0x$((az account show --query id --output tsv).Substring(0,4))",
   ## Instance number uniquifier.
   [string]$Instance = $ENV:DEPLOY_INSTANCE ?? '01',
+  ## Instance number uniquifier.
+  [string]$SubnetInstance = $ENV:DEPLOY_SUBNET_INSTANCE ?? '01',
   ## VM size. Default is the cheapest T4 SKU.
   [string]$VmSize = $ENV:DEPLOY_VM_SIZE ?? 'Standard_NV6ads_A10_v5',
   ## Linux admin account name (authentication via SSH key).
@@ -78,6 +80,8 @@ param (
   [string] $DiskSku = $ENV:DEPLOY_LLM_DISK_SKU ?? 'StandardSSD_LRS',
   ## Pinned vLLM version. Change deliberately; vLLM CLI flags drift between minors.
   [string] $VllmVersion = $ENV:DEPLOY_VLLM_VERSION ?? '0.20.0',
+  ## Pinned CUDA variant. To align with the Azure Nvidia extension install.
+  [string] $VllmCudaVariant =  $ENV:DEPLOY_VLLM_CUDA_VARIANT ?? 'cu128',
   ## Mount point for the data disk on the VM.
   [string] $ModelMountPoint = $ENV:DEPLOY_MODEL_MOUNT_POINT ?? '/opt/models',
   ## Subdirectory under the model mount where the model files live.
@@ -170,8 +174,8 @@ $location = $rg.location
 $appName = 'vllm'
 $diskAppName = "model"
 
-$nsgName = "nsg-$Purpose-workload-$Environment-001".ToLowerInvariant()
-$subnetName = "snet-$Purpose-workload-$Environment-$location-001".ToLowerInvariant()
+$nsgName = "nsg-$Purpose-workload-$Environment-$SubnetInstance".ToLowerInvariant()
+$subnetName = "snet-$Purpose-workload-$Environment-$location-$SubnetInstance".ToLowerInvariant()
 
 $vmName = "vm$appName$Environment$Instance".ToLowerInvariant()
 $identityName = "id-$vmName".ToLowerInvariant()
@@ -507,6 +511,7 @@ if (-not $vm) {
     '#INIT_API_KEY#'           = $VllmApiKey
     '#INIT_CERT_EMAIL#'        = $certEmail
     '#INIT_VLLM_VERSION#'      = $VllmVersion
+    '#INIT_VLLM_CUDA_VARIANT#' = $VllmCudaVariant
     '#INIT_SERVED_MODEL_NAME#' = $ServedModelName
     '#INIT_MODEL_DIR_NAME#'    = $ModelDirName
     '#INIT_MODEL_MOUNT_POINT#' = $ModelMountPoint
