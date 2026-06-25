@@ -53,8 +53,8 @@ Deploy at the resource group level to create:
 - Managed Identity `id-vmvllmdev01`, with permission to KeyVault
 - Subnet `snet-llm-workload-dev-australiaeast-01`
 - Network Security Group `nsg-llm-workload-dev-01`
-- Disk `diskmodeldev001`, for model download
-- Public IP `pip-vmvllmdev001-australiaeast-01` and `pipv4-vmvllmdev001-australiaeast-01`
+- Disk `diskmodeldev01`, for model download
+- Public IP `pip-vmvllmdev01-australiaeast-01` and `pipv4-vmvllmdev01-australiaeast-01`
 - Network Interface `nic-vmvllmdev01-01`
 - Virtual Machine `vmvllmdev01`, Ubuntu 22.04 LTS GPU VM size Standard_NC4as_T4_v3 (NVIDIA T4)
 - Disk `osdiskvmvllmdev01`
@@ -79,65 +79,13 @@ Required secrets and certificates are stored in the shared Key Vault.
 
 The virtual machine is configured to shut down automatically (based on Brisbane, Australia time), to save costs.
 
-### Test access to the virtual machine
-
-## Shared services
-
-A central IT function may allocate these resources, or they may be dedicated resources for the workload, although they are not part of the workload itself.
-
-| Component     | Details                   | Purpose                                                                                       |
-| ------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| Azure Monitor | log-llm-shared-dev        | Used for monitoring.                                                                          |
-| App Insights  | appi-llm-shared-dev       | Used for application monitoring.                                                              |
-| KeyVault      | kv-llm-shared-<orgId>-dev | Used for secure storage of secrets and certificates, rather than storing locally on machines. |
-
-### VPN Gateway (StrongSwan)
-
-Road warrior VPN gateway, to demonstrate use of a second layer of security.
-
-DNS host names:
-
-- "vpn-<OrgId>-dev.australiaeast.cloudapp.azure.com"
-- "vpn-<OrgId>-dev-ipv4.australiaeast.cloudapp.azure.com"
-
-The following subnet ranges are allocated:
-
-| Vnet                                   | IPv6 range     | IPv4 range   | Purpose                     |
-| -------------------------------------- | -------------- | ------------ | --------------------------- |
-| snet-llm-gateway-dev-australiaeast-001 | `--:0100::/64` | `--.16.0/24` | VPN gateway subnet.         |
-| VPN Clients                            | `--:300::/64`  | `--.48.0/24` | Subnet for VPN client pool. |
-
-The following Azure resources are created (if they do not already exist).
-
-| Component              | Details                               | Purpose                                                                 |
-| ---------------------- | ------------------------------------- | ----------------------------------------------------------------------- |
-| Network Security Group | nsg-llm-gateway-dev-001               | Security group for gateway subnet.                                      |
-| Managed Identity       | id-vmstrongdev001                     | Identity for the VPN gateway server.                                    |
-| Public IP              | pip-vmstrongdev001-australiaeast-01   | Public IPv6.                                                            |
-| Public IP              | pipv4-vmstrongdev001-australiaeast-01 | Public IPv4.                                                            |
-| Network Interface      | nic-vmstrongdev001-01                 | Separate NIC, so that public IP can be retained if server is recreated. |
-| Virtual Machine        | vmstrongdev001                        | StrongSwan virtual machine.                                             |
-| Disk                   | osdiskvmstrongdev001                  | OS disk for the VM.                                                     |
-
-VPN address pools:
-
-- IPv6 allocates addresses from the range `--:300::1000` to `--:300::1fff`.
-- IPv4 allocates addresses from the range `--.48.128` to `--.48.255`.
-
-Default machine size is 'Standard_D2s_v6'.
-
-Required secrets and certificates are stored in the shared Key Vault.
-
-The virtual machine is configured to shut down automatically (based on Brisbane, Australia time), to save costs.
-
-## Troubleshooting
-
 ### Cloud init debug
 
 Connect (SSH) to the server:
 
 ```sh
-ssh azureuser@llm-0x419d-dev-001-ipv4.australiaeast.cloudapp.azure.com
+$pip = az network public-ip show --resource-group rg-llm-workload-dev-01 --name pip-vmvllmdev01-australiaeast-01 | ConvertFrom-Json
+ssh "azureuser@$($pip.dnsSettings.fqdn)"
 ```
 
 Check the cloud init logs:
@@ -168,47 +116,44 @@ If you don't have a key, and need to create a new one:
 ssh-keygen -t rsa -b 4096
 ```
 
-## Notes
+## Import LLM model
 
-### Open source large language model (LLM)
+Once the VM is ready, we can download the open source LLM (may take a while).
 
-An LLM hosted in Azure, fully within your own tennant. Running this can be expensive.
+```pwsh
+./Import-LlmModel.ps1
+```
 
-You local AI tools connect, via your private connection, to your LLM.
+### Test endpoint
 
-### Agentic harness
+SSH to the machine, and you can test the model locally:
 
-As well as local development, provide sandbox environments with supporting services to run agents on Azure resources.
+```sh
+ls /opt/models
+sudo systemctl status vllm --no-pager
+sudo ss -ltnp | grep :443
+sudo cat /etc/vllm/vllm.env
+curl -k -H "Authorization: Bearer qwen_deadbeef0001" https://localhost/v1/models
+sudo journalctl -u vllm -n 200 --no-pager
+```
 
-## Pre-requisites
+Also test remote access:
 
-### Azure resource group and networking
+```pwsh
+$vllmApiKey = 'qwen_deadbeef0001'
+$headers = @{ Authorization = "Bearer $vllmApiKey" }
+$invokeArgs = @{ Headers = $headers }
+$pip = az network public-ip show --resource-group rg-llm-workload-dev-01 --name pip-vmvllmdev01-australiaeast-01 | ConvertFrom-Json
+$modelsUri = "https://$($pip.dnsSettings.fqdn)/v1/models"
+Invoke-RestMethod -Method Get -Uri $modelsUri @invokeArgs -TimeoutSec 180
+```
 
-Your IT provider needs to provide an Azure resource group, with permissions for you to create the LLM in, and allocate networking addresses, with internal routing, to a virtual network (vnet) that you can use.
+## Rebuilding the virtual machine
 
-Sometimes they will lock things down a bit more and also control subnets and security groups.
+Detach the model disk, then rebuild:
 
-In a cloud native organisation they may have self-service for a business unit to create an entire subscription, and then self-service network provisioning (with the required routing back to the corporate network).
-
-### Private network connection to your development box
-
-Often this is a virtual private network (VPN) between your local machine and Azure, although in some cases it could just be a public endpoint and relay on zero-trust transport layer security (TLS).
-
-In an office environment it may mean a dedicated ExpressRoute service between your corporate network and Azure.
-
-### Optional shared services
-
-Services such as DNS are usually shared, as are core services like KeyVault and Azure Monitor.
-
-You can duplicate them in your own subscription, or resource group, but shared is more common.
-
-## Scripted deployment
-
-## Ideas
-
-- Basic Azure VM with small LLM, zero trust connection
-- Azure VM with large LLM, zero trust connection
-- Azure VM via private tunnel (why?), using StrongSWAN for IPv6 support + native client
-- Azure Factory (pre-packaged)... not sure if any are open source
-- AWS VM with LLM
-- AWS Bedrock
+```pwsh
+./Dismount-LlmModelDisk.ps1
+az vm delete --resource-group rg-llm-workload-dev-01 --name vmvllmdev01 --data-disk-delete-option delete --yes
+./Deploy-VllmQwen.ps1 -VllmApiKey $vllmApiKey -OrgId $orgId -UlaGlobalId $ulaGlobalId -VnetIndex 17
+```

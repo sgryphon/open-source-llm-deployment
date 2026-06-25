@@ -58,7 +58,7 @@ param (
   ## Email to send auto-shutdown notification to (optional).
   [string]$ShutdownEmail = $ENV:DEPLOY_SHUTDOWN_EMAIL ?? '',
   ## Add a public IPv4 in addition to the IPv6. 
-  [switch]$AddPublicIpv4 = ($ENV:DEPLOY_ADD_IPV4 -eq 'true' -or $ENV:DEPLOY_ADD_IPV4 -eq '1'),
+  [switch]$AddPublicIpv4 = ($ENV:DEPLOY_ADD_IPV4 -ne 'true' -and $ENV:DEPLOY_ADD_IPV4 -ne '1'),
   ## 40-bit (10 hex) IPv6 Unique Local Address GlobalID to use (default hash of subscription ID)
   [string]$UlaGlobalId = $ENV:DEPLOY_GLOBAL_ID ?? (Get-FileHash -InputStream ([IO.MemoryStream]::new([Text.Encoding]::UTF8.GetBytes((az account show --query id --output tsv))))).Hash.Substring(0, 10),
   ## Address range to use for IPv4. Default to 10.0.0.0/8
@@ -546,30 +546,6 @@ if (-not $vm) {
 else {
   Write-Verbose "VM '$vmName' already present, skipping create."
 }
-
-# ---------------------------------------------------------------------------
-# NVIDIA GPU Driver Linux extension. Installs CUDA-compatible drivers so
-# vLLM can see the T4. The extension is idempotent at the resource level
-# (re-applying with the same version is a no-op).
-# ---------------------------------------------------------------------------
-
-$nvidiaExtName = 'NvidiaGpuDriverLinux'
-$nvidiaExt = az vm extension show --vm-name $vmName --resource-group $rgName --name $nvidiaExtName 2>$null | ConvertFrom-Json
-if (-not $nvidiaExt) {
-  Write-Verbose "Applying NVIDIA GPU Driver Linux extension to '$vmName'..."
-  az vm extension set `
-    --resource-group $rgName `
-    --vm-name $vmName `
-    --name $nvidiaExtName `
-    --publisher Microsoft.HpcCompute `
-    --version 1.10 `
-    --output none
-  if ($LASTEXITCODE -ne 0) { throw "az vm extension set NvidiaGpuDriverLinux failed." }
-}
-else {
-  Write-Verbose "NVIDIA GPU Driver extension already present, skipping."
-}
-
 # ---------------------------------------------------------------------------
 # Auto-shutdown.
 # ---------------------------------------------------------------------------
@@ -616,6 +592,29 @@ if (-not ($ciStdout -and ($ciStdout -match 'CLOUD_INIT_DONE'))) {
 }
 # To check: ssh llm-0x419d-dev-001.australiaeast.cloudapp.azure.com
 Write-Verbose "cloud-init reported 'done'."
+
+# ---------------------------------------------------------------------------
+# NVIDIA GPU Driver Linux extension. Installs CUDA-compatible drivers so
+# vLLM can see the T4. The extension is idempotent at the resource level
+# (re-applying with the same version is a no-op).
+# ---------------------------------------------------------------------------
+
+$nvidiaExtName = 'NvidiaGpuDriverLinux'
+$nvidiaExt = az vm extension show --vm-name $vmName --resource-group $rgName --name $nvidiaExtName 2>$null | ConvertFrom-Json
+if (-not $nvidiaExt) {
+  Write-Verbose "Applying NVIDIA GPU Driver Linux extension to '$vmName'..."
+  az vm extension set `
+    --resource-group $rgName `
+    --vm-name $vmName `
+    --name $nvidiaExtName `
+    --publisher Microsoft.HpcCompute `
+    --version 1.10 `
+    --output none
+  if ($LASTEXITCODE -ne 0) { throw "az vm extension set NvidiaGpuDriverLinux failed." }
+}
+else {
+  Write-Verbose "NVIDIA GPU Driver extension already present, skipping."
+}
 
 # ---------------------------------------------------------------------------
 # Summary.
