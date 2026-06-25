@@ -53,8 +53,9 @@ Deploy at the resource group level to create:
 - Managed Identity `id-vmvllmdev01`, with permission to KeyVault
 - Subnet `snet-llm-workload-dev-australiaeast-01`
 - Network Security Group `nsg-llm-workload-dev-01`
+- NAT Gateway `ng-llm-agent-01` and Public IPv4 `pip-ng-llm-agent-01` for IPv4 egress
 - Disk `diskmodeldev01`, for model download
-- Public IP `pip-vmvllmdev01-australiaeast-01` and `pipv4-vmvllmdev01-australiaeast-01`
+- Public IP `pip-vmvllmdev01-australiaeast-01` and `pipv4-vmvllmdev01-australiaeast-01` for the VM
 - Network Interface `nic-vmvllmdev01-01`
 - Virtual Machine `vmvllmdev01`, Ubuntu 22.04 LTS GPU VM size Standard_NC4as_T4_v3 (NVIDIA T4)
 - Disk `osdiskvmvllmdev01`

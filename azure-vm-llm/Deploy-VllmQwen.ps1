@@ -9,6 +9,7 @@
     * Managed Identity `id-vmvllmdev01`, with permission to KeyVault
     * Subnet `snet-llm-workload-dev-australiaeast-01`
     * Network Security Group `nsg-llm-workload-dev-01`
+    * NAT Gateway `ng-llm-agent-01` and Public IPv4 `pip-ng-llm-agent-01` for IPv4 egress
     * Disk `diskmodeldev001`, for model download
     * Public IP `pip-vllm-dev-australiaeast-01` and `pipv4-vllm-dev-australiaeast-01`
     * Network Interface `nic-01-vmvllmdev01-01`
@@ -176,6 +177,8 @@ $diskAppName = "model"
 
 $nsgName = "nsg-$Purpose-workload-$Environment-$SubnetInstance".ToLowerInvariant()
 $subnetName = "snet-$Purpose-workload-$Environment-$location-$SubnetInstance".ToLowerInvariant()
+$natGatewayName = "ng-$Purpose-workload-$Environment-$SubnetInstance".ToLowerInvariant()
+$natPipName = "pip-ng-$Purpose-workload-$Environment-$SubnetInstance".ToLowerInvariant()
 
 $vmName = "vm$appName$Environment$Instance".ToLowerInvariant()
 $identityName = "id-$vmName".ToLowerInvariant()
@@ -187,6 +190,8 @@ $vmOsDisk = "osdisk$vmName".ToLowerInvariant()
 
 Write-Verbose "Network Security Group: $nsgName"
 Write-Verbose "Managed Identity: $identityName"
+Write-Verbose "NAT Gateway: $natGatewayName"
+Write-Verbose "NAT Gateway Public IP: $natPipName"
 Write-Verbose "Model Disk: $diskName"
 Write-Verbose "Public IP: $pipV6Name"
 Write-Verbose "Public IP: $pipV4Name"
@@ -288,6 +293,43 @@ else {
 }
 
 # ---------------------------------------------------------
+# NAT Gateway (IPv4 outbound)
+
+$natPip = az network public-ip show --name $natPipName --resource-group $rgName 2>$null | ConvertFrom-Json
+if (-not $natPip) {
+  Write-Verbose "Creating NAT Gateway Public IPv4 $natPipName"
+  az network public-ip create `
+    --name $natPipName `
+    --resource-group $rgName `
+    --location $location `
+    --sku Standard `
+    --allocation-method static `
+    --version IPv4 `
+    --tags $tags `
+    --output none
+  if ($LASTEXITCODE -ne 0) { throw "create NAT gateway public IPv4 failed." }
+}
+else {
+  Write-Verbose "NAT Gateway Public IPv4 already exists"
+}
+
+$natGateway = az network nat gateway show --name $natGatewayName --resource-group $rgName 2>$null | ConvertFrom-Json
+if (-not $natGateway) {
+  Write-Verbose "Creating NAT Gateway $natGatewayName (Public IP: $natPipName)"
+  az network nat gateway create `
+    --name $natGatewayName `
+    --resource-group $rgName `
+    --location $location `
+    --public-ip-addresses $natPipName `
+    --tags $tags `
+    --output none
+  if ($LASTEXITCODE -ne 0) { throw "create NAT gateway failed." }
+}
+else {
+  Write-Verbose "NAT Gateway already exists"
+}
+
+# ---------------------------------------------------------
 # Subnet
 
 $subnet = az network vnet subnet show --name $subnetName -g $rgName --vnet-name $vnetName 2>$null | ConvertFrom-Json
@@ -297,7 +339,9 @@ if (-not $subnet) {
     --address-prefix $subnetPrefixV6 $subnetPrefixV4 `
     --resource-group $rgName `
     --vnet-name $vnetName `
-    --network-security-group $nsgName | ConvertFrom-Json
+    --network-security-group $nsgName `
+    --nat-gateway $natGatewayName `
+    --default-outbound false | ConvertFrom-Json
   if ($LASTEXITCODE -ne 0) { throw "create subnet failed." }
 }
 else {
@@ -333,7 +377,7 @@ else {
   Write-Verbose "Managed Identity already exists"
 }
 $uamiResourceId = $identity.id
-$uamiClientId = $identity.clientId
+#$uamiClientId = $identity.clientId
 
 # ---------------------------------------------------------
 # Model Data Disk
