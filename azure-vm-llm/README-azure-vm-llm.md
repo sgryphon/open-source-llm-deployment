@@ -48,43 +48,30 @@ OrgId is used where names need to be globally unique (such as the Key Vault URI)
 
 ## Deploy vLLM virtual machine, with disk, and subnet
 
-DNS host names:
-
-- "llm-<OrgId>-dev-001.australiaeast.cloudapp.azure.com"
-- "llm-<OrgId>-dev-001-ipv4.australiaeast.cloudapp.azure.com"
-
 Deploy at the resource group level to create:
 
-- Managed Identity `id-vmvllmdev001`, with permission to KeyVault | Identity for the VPN gateway server, with permission to shared Key Vault. |
-- Network Security Group | nsg-llm-workload-dev-001 | Security group for gateway subnet. |
-- Disk | diskmodeldev001 | Data disk for model download; can detach and persist if server recreated. |
-- Public IP | pip-vmvllmdev001-australiaeast-01 | Public IPv6; persists across server rebuild. |
-- Public IP | pipv4-vmvllmdev001-australiaeast-01 | Public IPv4; persists across server rebuild. |
-- Network Interface | nic-vmvllmdev001-01 | Separate NIC, so that IP addresses can be retained if server is recreated. |
-- Virtual Machine | vmvllmdev001 | vLLM virtual machine. |
-- Disk | osdiskvmvllmdev001 | OS disk for the VM. |
+- Managed Identity `id-vmvllmdev01`, with permission to KeyVault
+- Subnet `snet-llm-workload-dev-australiaeast-01`
+- Network Security Group `nsg-llm-workload-dev-01`
+- Disk `diskmodeldev001`, for model download
+- Public IP `pip-vmvllmdev001-australiaeast-01` and `pipv4-vmvllmdev001-australiaeast-01`
+- Network Interface `nic-vmvllmdev01-01`
+- Virtual Machine `vmvllmdev01`, Ubuntu 22.04 LTS GPU VM size Standard_NC4as_T4_v3 (NVIDIA T4)
+- Disk `osdiskvmvllmdev01`
 
-The following subnet ranges are allocated:
+```pwsh
+$vllmApiKey = 'qwen_deadbeef0001'
+./Deploy-VllmQwen.ps1 -VllmApiKey $vllmApiKey -OrgId $orgId -UlaGlobalId $ulaGlobalId -VnetIndex 17
+```
 
-| Vnet                                    | IPv6 range     | IPv4 range   | Purpose          |
-| --------------------------------------- | -------------- | ------------ | ---------------- |
-| snet-llm-workload-dev-australiaeast-001 | `--:0200::/64` | `--.32.0/24` | Workload subnet. |
+DNS host names:
 
-The following Azure resources are created (if they do not already exist).
+- "vllm-<OrgId>-dev-01.australiaeast.cloudapp.azure.com"
+- "vllm-<OrgId>-dev-01-ipv4.australiaeast.cloudapp.azure.com"
 
-Already existing resources are reused, for example if you delete the virtual machine then
-the exist model disk and network interface (for IP addresses) will be retained.
+The network interface and public IPs can be retained if the VM is recreated.
 
-| Component              | Details                             | Purpose                                                                    |
-| ---------------------- | ----------------------------------- | -------------------------------------------------------------------------- |
-| Network Security Group | nsg-llm-workload-dev-001            | Security group for gateway subnet.                                         |
-| Managed Identity       | id-vmvllmdev001                     | Identity for the VPN gateway server, with permission to shared Key Vault.  |
-| Disk                   | diskmodeldev001                     | Data disk for model download; can detach and persist if server recreated.  |
-| Public IP              | pip-vmvllmdev001-australiaeast-01   | Public IPv6; persists across server rebuild.                               |
-| Public IP              | pipv4-vmvllmdev001-australiaeast-01 | Public IPv4; persists across server rebuild.                               |
-| Network Interface      | nic-vmvllmdev001-01                 | Separate NIC, so that IP addresses can be retained if server is recreated. |
-| Virtual Machine        | vmvllmdev001                        | vLLM virtual machine.                                                      |
-| Disk                   | osdiskvmvllmdev001                  | OS disk for the VM.                                                        |
+The model disk can also be detached to preserve it if recreating the VM.
 
 Default machine size is 'Standard_NV6ads_A10_v5'. CPU quota and SKU availability are checked for the region.
 
@@ -92,7 +79,7 @@ Required secrets and certificates are stored in the shared Key Vault.
 
 The virtual machine is configured to shut down automatically (based on Brisbane, Australia time), to save costs.
 
-$VllmApiKey = 'qwen_deadbeef0001'
+### Test access to the virtual machine
 
 ## Shared services
 
