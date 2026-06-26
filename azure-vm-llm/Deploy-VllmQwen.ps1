@@ -249,8 +249,8 @@ if (-not $nsg) {
   az network nsg create --name $nsgName -g $rgName -l $location --tags $tags
   if ($LASTEXITCODE -ne 0) { throw "create network security group failed." }
 
-  Write-Verbose "Adding Network security group rule 'AllowSSH' for port 22 to $nsgName"
-  az network nsg rule create --name AllowSSH `
+  Write-Verbose "Adding Network security group rule 'Allow-SSH-Inbound' for port 22 to $nsgName"
+  az network nsg rule create --name 'Allow-SSH-Inbound' `
     --nsg-name $nsgName `
     --priority 1000 `
     --resource-group $rgName `
@@ -259,9 +259,9 @@ if (-not $nsg) {
     --source-port-ranges "*" `
     --direction Inbound `
     --destination-port-ranges 22
-
-  Write-Verbose "Adding Network security group rule 'AllowICMP' for ICMP to $nsgName"
-  az network nsg rule create --name AllowICMPv4 `
+    
+  Write-Verbose "Adding Network security group rule 'Allow-ICMPv4-Inbound' for ICMP to $nsgName"
+  az network nsg rule create --name 'Allow-ICMPv4-Inbound' `
     --nsg-name $nsgName `
     --priority 1001 `
     --resource-group $rgName `
@@ -271,13 +271,16 @@ if (-not $nsg) {
     --destination-port-ranges "*" `
     --protocol Icmp
 
-  # Can't create ICMPv6 via API.
-  # If you create a rule, then you can update it via the UI.
+  Write-Verbose "Adding Network security group rule 'Allow-ICMPv6-Inbound' for ICMP to $nsgName (via Bicep)"
+  az deployment group create `
+    --resource-group $rgName `
+    --template-file 'add-nsg-inbound-icmpv6.bicep' `
+    --parameters nsgName=$nsgName priority=1002
 
-  Write-Verbose "Adding Network security group rule 'AllowHTTP' for port 80, 443 to $nsgName"
-  az network nsg rule create --name AllowHTTP `
+  Write-Verbose "Adding Network security group rule 'Allow-HTTP-Inbound' for port 80, 443 to $nsgName"
+  az network nsg rule create --name 'Allow-HTTP-Inbound' `
     --nsg-name $nsgName `
-    --priority 1003 `
+    --priority 1010 `
     --resource-group $rgName `
     --access Allow `
     --source-address-prefixes "*" `

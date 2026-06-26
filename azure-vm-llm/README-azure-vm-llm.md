@@ -127,11 +127,17 @@ Once the VM is ready, we can download the open source LLM (may take a while).
 
 ### Test endpoint
 
-SSH to the machine, and you can test the model locally:
+SSH to the machine:
+
+```sh
+$pip = az network public-ip show --resource-group rg-llm-workload-dev-01 --name pip-vmvllmdev01-australiaeast-01 | ConvertFrom-Json
+ssh "azureuser@$($pip.dnsSettings.fqdn)"
+```
+
+Test the model locally:
 
 ```sh
 ls /opt/models
-nvidia-smi
 sudo systemctl status vllm --no-pager
 sudo ss -ltnp | grep :443
 sudo cat /etc/vllm/vllm.env
@@ -167,4 +173,12 @@ Detach the model disk, then rebuild:
 az vm delete --resource-group rg-llm-workload-dev-01 --name vmvllmdev01 --yes
 az disk delete --resource-group rg-llm-workload-dev-01 --name osdiskvmvllmdev01 --yes
 ./Deploy-VllmQwen.ps1 -VllmApiKey $vllmApiKey -OrgId $orgId -UlaGlobalId $ulaGlobalId -VnetIndex 17
+```
+
+If you need to also remove the network:
+
+```pwsh
+az network nic delete --resource-group rg-llm-workload-dev-01 --name nic-vmvllmdev01-01
+az network vnet subnet delete --resource-group rg-llm-workload-dev-01 --vnet-name vnet-llm-workload-dev-australiaeast-01 --name snet-llm-workload-dev-australiaeast-01
+az network nsg delete --resource-group rg-llm-workload-dev-01 --name nsg-llm-workload-dev-01
 ```
