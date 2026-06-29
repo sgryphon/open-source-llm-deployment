@@ -80,9 +80,9 @@ param (
   [ValidateSet('Standard_LRS', 'StandardSSD_LRS', 'Premium_LRS')]
   [string] $DiskSku = $ENV:DEPLOY_LLM_DISK_SKU ?? 'StandardSSD_LRS',
   ## Pinned vLLM version. Change deliberately; vLLM CLI flags drift between minors.
-  [string] $VllmVersion = $ENV:DEPLOY_VLLM_VERSION ?? '0.20.0',
+  [string] $VllmVersion = $ENV:DEPLOY_VLLM_VERSION ?? '0.23.0',
   ## Pinned CUDA variant. To align with the Azure Nvidia extension install.
-  [string] $VllmCudaVariant =  $ENV:DEPLOY_VLLM_CUDA_VARIANT ?? 'cu128',
+  [string] $VllmCudaVariant =  $ENV:DEPLOY_VLLM_CUDA_VARIANT ?? 'cu129',
   ## Mount point for the data disk on the VM.
   [string] $ModelMountPoint = $ENV:DEPLOY_MODEL_MOUNT_POINT ?? '/opt/models',
   ## Subdirectory under the model mount where the model files live.

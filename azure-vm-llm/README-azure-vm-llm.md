@@ -40,6 +40,12 @@ Deploy at the resource group level to create:
 - Azure Key Vault `kv-<orgId>-llm-dev-01`
 
 ```pwsh
+$subscriptionUnique = az deployment sub create `
+  --location australiaeast `
+  --template-file ./get-subscription-unique.bicep `
+  --query "properties.outputs.unique.value" `
+  --output tsv
+$ulaGlobalId = ($subscriptionUnique.Substring(0, 10).ToLower().ToCharArray() | ForEach-Object { '{0:x}' -f ('abcdefghijklmnopqrstuvwxyz234567'.IndexOf($_) -band 0xF) }) -join ''
 $orgId = $subscriptionUnique.Substring(0, 6).ToLower()
 ./Deploy-SharedServices.ps1 -OrgId $orgId
 ```
@@ -139,7 +145,7 @@ Test the model locally:
 ```sh
 ls /opt/models
 sudo systemctl status vllm --no-pager
-sudo ss -ltnp | grep :443
+sudo ss -ltnp | grep 443
 sudo cat /etc/vllm/vllm.env
 curl -k -H "Authorization: Bearer qwen_deadbeef0001" https://localhost/v1/models
 sudo journalctl -u vllm -n 200 --no-pager

@@ -53,7 +53,7 @@ runcmd:
 
   # venv + vLLM install.
   - /root/.local/bin/uv venv --python 3.10 /opt/vllm/.venv
-  - /root/.local/bin/uv pip install --python /opt/vllm/.venv/bin/python "vllm==#INIT_VLLM_VERSION#" --torch-backend=#INIT_VLLM_CUDA_VARIANT#
+  - /root/.local/bin/uv pip install --python /opt/vllm/.venv/bin/python vllm --extra-index-url https://wheels.vllm.ai/#INIT_VLLM_VERSION#/#INIT_VLLM_CUDA_VARIANT# --extra-index-url https://download.pytorch.org/whl/#INIT_VLLM_CUDA_VARIANT# --index-strategy unsafe-best-match
   - chown -R vllm:vllm /opt/vllm
 
   # setcap so vllm can bind :443 without root.
