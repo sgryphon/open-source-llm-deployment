@@ -40,6 +40,7 @@ Deploy at the resource group level to create:
 - Azure Key Vault `kv-<orgId>-llm-dev-01`
 
 ```pwsh
+$VerbosePreference = 'Continue'
 $subscriptionUnique = az deployment sub create `
   --location australiaeast `
   --template-file ./get-subscription-unique.bicep `
@@ -101,6 +102,12 @@ Check the cloud init logs:
 more /var/log/cloud-init-output.log
 ```
 
+Check nVidia (you may need to wait for extensions install to complete, or restart the VM to get it recognised):
+
+```sh
+nvidia-smi
+```
+
 Also see: https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cloud-init-troubleshooting
 
 ### Configure SSH
@@ -144,11 +151,12 @@ Test the model locally:
 
 ```sh
 ls /opt/models
-sudo systemctl status vllm --no-pager
-sudo ss -ltnp | grep 443
 sudo cat /etc/vllm/vllm.env
-curl -k -H "Authorization: Bearer qwen_deadbeef0001" https://localhost/v1/models
+ls /etc/vllm/certs
+sudo systemctl status vllm --no-pager
 sudo journalctl -u vllm -n 200 --no-pager
+sudo ss -ltnp | grep 443
+curl -k -H "Authorization: Bearer qwen_deadbeef0001" https://localhost/v1/models
 ```
 
 Troubleshooting Nvidia, e.g. check the CUDA versions match:

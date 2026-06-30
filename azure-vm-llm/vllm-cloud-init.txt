@@ -63,10 +63,10 @@ runcmd:
   - mkdir -p /etc/vllm /etc/vllm/certs
   - chown vllm:vllm /etc/vllm /etc/vllm/certs
   - install -m 0600 -o vllm -g vllm /dev/null /etc/vllm/vllm.env
-  - printf 'VLLM_API_KEY=%s\nHF_HOME=%s/.cache\n' '#INIT_API_KEY#' '#INIT_MODEL_MOUNT_POINT#' > /etc/vllm/vllm.env
+  - printf 'VLLM_API_KEY=%s\nHF_HOME=%s/.cache\nVLLM_USE_FLASHINFER_SAMPLER=0\n' '#INIT_API_KEY#' '#INIT_MODEL_MOUNT_POINT#' > /etc/vllm/vllm.env
 
   # Initial TLS cert via certbot standalone.
-  - certbot certonly --standalone --preferred-challenges http --cert-name vllm-cert -d #INIT_HOST_NAMES# -n --agree-tos -m '#INIT_CERT_EMAIL#'
+  - certbot certonly --standalone --preferred-challenges http --cert-name vllm-cert -d '#INIT_HOST_NAMES#' -n --agree-tos -m '#INIT_CERT_EMAIL#'
 
   # Copy initial cert into place for vllm.service.
   - cp /etc/letsencrypt/live/vllm-cert/fullchain.pem /etc/vllm/certs/server.pem
@@ -121,6 +121,7 @@ write_files:
           --served-model-name #INIT_SERVED_MODEL_NAME# \
           --tool-call-parser hermes \
           --enable-auto-tool-choice \
+          --gpu-memory-utilization 0.85 \
           --max-model-len 32768
       Restart=on-failure
       RestartSec=10

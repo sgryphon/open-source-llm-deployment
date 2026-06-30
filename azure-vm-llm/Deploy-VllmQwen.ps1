@@ -53,7 +53,7 @@ param (
   ## Instance number uniquifier.
   [string]$SubnetInstance = $ENV:DEPLOY_SUBNET_INSTANCE ?? '01',
   ## VM size. Default is the cheapest T4 SKU.
-  [string]$VmSize = $ENV:DEPLOY_VM_SIZE ?? 'Standard_NV6ads_A10_v5',
+  [string]$VmSize = $ENV:DEPLOY_VM_SIZE ?? 'Standard_NV18ads_A10_v5',
   ## Linux admin account name (authentication via SSH key).
   [string]$AdminUsername = $ENV:DEPLOY_ADMIN_USERNAME ?? 'azureuser',
   ## Auto-shutdown time in UTC (HHMM). Empty string disables.
@@ -505,8 +505,16 @@ if ($VmSize -eq 'Standard_NV6ads_A10_v5') {
   $vmFamily = 'StandardNVADSA10v5Family'
   $cpuRequired = 6
 }
+elseif ($VmSize -eq 'Standard_NV12ads_A10_v5') {
+  $vmFamily = 'StandardNVADSA10v5Family'
+  $cpuRequired = 12
+}
+elseif ($VmSize -eq 'Standard_NV18ads_A10_v5') {
+  $vmFamily = 'StandardNVADSA10v5Family'
+  $cpuRequired = 18
+}
 else {
-  throw "Unknown VmSize $VmSize"
+  throw "Unknown VmSize $VmSize -- update deploy script with family/CPUs"
 }
 
 Write-Verbose "Checking GPU quota for '$vmFamily' in '$($location)'..."
