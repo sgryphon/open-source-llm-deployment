@@ -1,0 +1,91 @@
+#!/usr/bin/env pwsh
+
+<# .SYNOPSIS
+  Detach the persistent model data disk from the LLM VM, optionally
+  deleting the VM, while leaving the data disk intact in the workload RG.
+
+.DESCRIPTION
+  Two phases, both idempotent:
+
+    1. Deallocate the VM (`az vm deallocate`). Tolerated as a no-op if
+       the VM is already deallocated or missing.
+    2. Detach the data disk (`az vm disk detach`). Tolerated as a no-op
+       if the disk is already detached or the VM is missing.
+
+.EXAMPLE
+
+  az login
+  $VerbosePreference = 'Continue'
+  ./util/Detach-LlmModelDisk.ps1
+#>
+[CmdletBinding()]
+param (
+    ## Purpose prefix (matches `a-infrastructure/`).
+    [string]$Purpose = $ENV:DEPLOY_PURPOSE ?? 'LLM',
+    ## Workload prefix (matches `a-infrastructure/02-Initialize-WorkloadRg.ps1`).
+    [string]$Workload = $ENV:DEPLOY_WORKLOAD ?? 'workload',
+    ## Deployment environment, e.g. Prod, Dev, QA, Stage, Test.
+    [string]$Environment = $ENV:DEPLOY_ENVIRONMENT ?? 'Dev',
+    ## Instance number uniquifier (matches `a-infrastructure/`).
+    [string]$Instance = $ENV:DEPLOY_INSTANCE ?? '01'
+)
+
+$ErrorActionPreference = 'Stop'
+
+$appName = 'vllm'
+$diskAppName = "model"
+
+$rgName   = "rg-$Purpose-$Workload-$Environment-$Instance".ToLowerInvariant()
+$vmName = "vm$appName$Environment$Instance".ToLowerInvariant()
+$diskName = "disk$diskAppName$Environment$Instance".ToLowerInvariant()
+
+# Guard: never, ever delete the data disk.
+$disk = az disk show --name $diskName --resource-group $rgName 2>$null | ConvertFrom-Json
+if (-not $disk) {
+    Write-Warning "Data disk '$diskName' not found in '$rgName'. Nothing to detach (and nothing to protect)."
+}
+
+$vm = az vm show --name $vmName --resource-group $rgName 2>$null | ConvertFrom-Json
+if (-not $vm) {
+    Write-Verbose "VM '$vmName' not found in '$rgName'."
+    if ($disk -and $disk.diskState -eq 'Unattached') {
+        Write-Verbose "Data disk '$diskName' is already Unattached. Nothing to do."
+        Write-Verbose "Detach LLM/vLLM model disk complete (no-op)."
+        return
+    }
+    if ($DeleteVm) {
+        Write-Verbose "VM is already gone; -DeleteVm is moot."
+    }
+    return
+}
+
+# 1. Deallocate. Idempotent.
+$instance = az vm get-instance-view --name $vmName --resource-group $rgName 2>$null | ConvertFrom-Json
+$powerState = ($instance.instanceView.statuses | Where-Object { $_.code -like 'PowerState/*' } | Select-Object -First 1).code
+if ($powerState -ne 'PowerState/deallocated') {
+    Write-Verbose "Deallocating VM '$vmName' (current state: $powerState) ..."
+    az vm deallocate --name $vmName --resource-group $rgName --output none
+    if ($LASTEXITCODE -ne 0) { throw "az vm deallocate '$vmName' failed." }
+} else {
+    Write-Verbose "VM '$vmName' already deallocated; skipping."
+}
+
+# 2. Detach the data disk if it's attached to this VM. Idempotent.
+$attached = $false
+if ($disk -and $disk.managedBy) {
+    $expectedSuffix = "/virtualMachines/$vmName"
+    if ($disk.managedBy.ToLowerInvariant().EndsWith($expectedSuffix.ToLowerInvariant())) {
+        $attached = $true
+    } else {
+        Write-Warning "Data disk '$diskName' is attached to '$($disk.managedBy)', not to '$vmName'. Refusing to touch it."
+    }
+}
+if ($attached) {
+    Write-Verbose "Detaching data disk '$diskName' from VM '$vmName' ..."
+    az vm disk detach --vm-name $vmName --resource-group $rgName --name $diskName --output none
+    if ($LASTEXITCODE -ne 0) { throw "az vm disk detach '$diskName' failed." }
+} else {
+    Write-Verbose "Data disk '$diskName' is not attached to '$vmName'; nothing to detach."
+}
+
+Write-Verbose "Detach LLM/vLLM model disk complete."

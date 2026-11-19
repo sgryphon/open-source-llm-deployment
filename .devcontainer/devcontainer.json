@@ -3,8 +3,9 @@
 {
 	"name": "PowerShell",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/powershell:lts-debian-11",
+	"image": "mcr.microsoft.com/powershell:lts-debian-12",
 	"features": {
+		"ghcr.io/devcontainers/features/powershell:2": {},
 		"ghcr.io/devcontainers/features/common-utils:2": {
 			"installZsh": "true",
 			"username": "vscode",
@@ -21,8 +22,8 @@
 			"version": "os-provided"
 		},
         "ghcr.io/devcontainers/features/node:1": {},
-        "ghcr.io/devcontainers-contrib/features/apt-packages:1": {
-            "packages": "openssl,strongswan-pki"
+        "ghcr.io/devcontainers-extra/features/apt-packages:1": {
+            "packages": "openssl,strongswan-pki,iputils-ping,traceroute,iputils-tracepath"
         }
 	},
 
@@ -49,11 +50,13 @@
 				"jebbs.plantuml"
 			]
 		}
-	}
+	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
+
+	"runArgs": ["--cap-add=NET_RAW"]
 }

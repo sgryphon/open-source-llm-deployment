@@ -1,0 +1,130 @@
+#cloud-config
+# vLLM OpenAI-compatible inference server on a single Ubuntu 22.04 VM.
+#
+# The API key is substituted into this template by Deploy-VllmQwen.ps1 -- no
+# Key Vault or managed identity access is needed at runtime.
+
+# The model bytes are NOT downloaded by cloud-init: they are placed onto
+# the persistent data disk later via util/Import-LlmModel.ps1.
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - certbot
+  - curl
+  - e2fsprogs
+  - jq
+  - libcap2-bin
+  - python3
+  - python3-venv
+  - python3-pip
+  - unzip
+  - wget
+  - zip
+
+runcmd:
+  # Firewall: only SSH and vLLM HTTP/S.
+  - ufw allow ssh
+  - ufw allow http
+  - ufw allow https
+  - ufw enable
+
+  # Update packages
+  - apt-get upgrade
+
+  # Format and mount the data disk (LUN 0).
+  - DEVICE=$(readlink -f /dev/disk/azure/scsi1/lun0)
+  - |
+    if ! blkid -o value -s TYPE "$DEVICE" >/dev/null 2>&1; then
+      mkfs.ext4 -L llm-models -F "$DEVICE"
+    fi
+  - mkdir -p #INIT_MODEL_MOUNT_POINT#
+  - echo 'LABEL=llm-models #INIT_MODEL_MOUNT_POINT# ext4 defaults,nofail 0 2' >> /etc/fstab
+  - mount -a
+
+  # Create the vllm user.
+  - useradd --system --create-home --home-dir /var/lib/vllm --shell /usr/sbin/nologin vllm
+  - chown vllm:vllm #INIT_MODEL_MOUNT_POINT#
+
+  # install uv
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - export PATH="/root/.local/bin:$PATH"
+
+  # venv + vLLM install.
+  - /root/.local/bin/uv venv --python 3.10 /opt/vllm/.venv
+  - /root/.local/bin/uv pip install --python /opt/vllm/.venv/bin/python vllm --extra-index-url https://wheels.vllm.ai/#INIT_VLLM_VERSION#/#INIT_VLLM_CUDA_VARIANT# --extra-index-url https://download.pytorch.org/whl/#INIT_VLLM_CUDA_VARIANT# --index-strategy unsafe-best-match
+  - chown -R vllm:vllm /opt/vllm
+
+  # setcap so vllm can bind :443 without root.
+  - setcap 'cap_net_bind_service=+ep' $(readlink -f /opt/vllm/.venv/bin/python)
+
+  # Write /etc/vllm/vllm.env.
+  - mkdir -p /etc/vllm /etc/vllm/certs
+  - chown vllm:vllm /etc/vllm /etc/vllm/certs
+  - install -m 0600 -o vllm -g vllm /dev/null /etc/vllm/vllm.env
+  - printf 'VLLM_API_KEY=%s\nHF_HOME=%s/.cache\nVLLM_USE_FLASHINFER_SAMPLER=0\n' '#INIT_API_KEY#' '#INIT_MODEL_MOUNT_POINT#' > /etc/vllm/vllm.env
+
+  # Initial TLS cert via certbot standalone.
+  - certbot certonly --standalone --preferred-challenges http --cert-name vllm-cert -d '#INIT_HOST_NAMES#' -n --agree-tos -m '#INIT_CERT_EMAIL#'
+
+  # Copy initial cert into place for vllm.service.
+  - cp /etc/letsencrypt/live/vllm-cert/fullchain.pem /etc/vllm/certs/server.pem
+  - cp /etc/letsencrypt/live/vllm-cert/privkey.pem   /etc/vllm/certs/server.key
+  - chown vllm:vllm /etc/vllm/certs/server.pem /etc/vllm/certs/server.key
+  - chmod 0600     /etc/vllm/certs/server.pem /etc/vllm/certs/server.key
+
+  # Enable vllm.service; do NOT start it (ConditionPathExists blocks until model is loaded).
+  - systemctl daemon-reload
+  - systemctl enable vllm
+
+write_files:
+  # Certbot renew deploy hook: copy cert material into /etc/vllm/certs and restart.
+  - path: /etc/letsencrypt/renewal-hooks/deploy/10-vllm-restart.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      SOURCE_DIR=/etc/letsencrypt/live/vllm-cert
+      CERTIFICATE_DIR=/etc/vllm/certs
+      if [ "${RENEWED_LINEAGE}" = "${SOURCE_DIR}" ]; then
+          mkdir -p "${CERTIFICATE_DIR}"
+          cp "${RENEWED_LINEAGE}/fullchain.pem" "${CERTIFICATE_DIR}/server.pem"
+          cp "${RENEWED_LINEAGE}/privkey.pem"   "${CERTIFICATE_DIR}/server.key"
+          chown vllm:vllm "${CERTIFICATE_DIR}/server.pem" "${CERTIFICATE_DIR}/server.key"
+          chmod 0600     "${CERTIFICATE_DIR}/server.pem" "${CERTIFICATE_DIR}/server.key"
+          systemctl restart vllm
+      fi
+
+  # systemd unit for vLLM.
+  - path: /etc/systemd/system/vllm.service
+    owner: root:root
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=vLLM OpenAI-compatible server
+      After=network-online.target
+      Wants=network-online.target
+      ConditionPathExists=#INIT_MODEL_MOUNT_POINT#/#INIT_MODEL_DIR_NAME#/config.json
+
+      [Service]
+      User=vllm
+      Group=vllm
+      EnvironmentFile=/etc/vllm/vllm.env
+      ExecStart=/opt/vllm/.venv/bin/vllm serve \
+          #INIT_MODEL_MOUNT_POINT#/#INIT_MODEL_DIR_NAME# \
+          --host :: \
+          --port 443 \
+          --ssl-certfile /etc/vllm/certs/server.pem \
+          --ssl-keyfile  /etc/vllm/certs/server.key \
+          --api-key      ${VLLM_API_KEY} \
+          --served-model-name #INIT_SERVED_MODEL_NAME# \
+          --tool-call-parser hermes \
+          --enable-auto-tool-choice \
+          --gpu-memory-utilization 0.85 \
+          --max-model-len 32768
+      Restart=on-failure
+      RestartSec=10
+
+      [Install]
+      WantedBy=multi-user.target
