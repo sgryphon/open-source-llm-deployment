@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(~/.azure/**)",
+      "Edit(~/.azure/**)",
+      "Bash(az:*)",
+      "PowerShell(az *)"
+    ]
+  }
+}
