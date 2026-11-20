@@ -22,7 +22,7 @@ Example:
   az stack group create `
     --resource-group 'rg-demo-foundry-dev-001' `
     --name 'stack-demo-foundry-dev-001-shared' `
-    --template-file './azure-foundry/baseline/002-deploy-shared/main.bicep' `
+    --template-file './azure-foundry-llm/baseline/002-deploy-shared/main.bicep' `
     --action-on-unmanage deleteResources `
     --deny-settings-mode none `
     --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified

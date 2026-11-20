@@ -18,7 +18,7 @@ Example:
   az stack sub create `
     --name 'stack-demo-foundry-dev-001-init' `
     --location 'australiaeast' `
-    --template-file './azure-foundry/infrastructure/001-init-foundry-rg/main.bicep' `
+    --template-file './azure-foundry-llm/baseline/001-init-foundry-rg/main.bicep' `
     --action-on-unmanage detachAll `
     --deny-settings-mode none `
     --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified

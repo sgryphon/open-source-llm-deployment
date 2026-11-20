@@ -28,7 +28,7 @@ To initialise a Resource Group:
 az stack sub create `
   --name stack-demo-foundry-dev-001-init `
   --location australiaeast `
-  --template-file ./azure-foundry/baseline/001-init-foundry-rg/main.bicep `
+  --template-file ./azure-foundry-llm/baseline/001-init-foundry-rg/main.bicep `
   --action-on-unmanage detachAll `
   --deny-settings-mode none `
   --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified
@@ -53,7 +53,7 @@ Deploy the shared Azure Monitor resources within the resource group:
 az stack group create `
   --resource-group rg-demo-foundry-dev-001 `
   --name stack-demo-foundry-dev-001-shared `
-  --template-file ./azure-foundry/baseline/002-deploy-shared/main.bicep `
+  --template-file ./azure-foundry-llm/baseline/002-deploy-shared/main.bicep `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
   --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified
@@ -66,13 +66,13 @@ This creates the following Azure Resources (using the default settings):
 | Log Analytics workspace | `log-demo-dev-{orgId}-001`  | Workspace backing Application Insights |
 | Application Insights    | `appi-demo-dev-{orgId}-001` | Observability foundation for workloads |
 
-## Deploying the workload: Foundry account and project
+## Deploying the workload: Foundry account, project, and model
 
 ```powershell
 az stack group create `
   --resource-group rg-demo-foundry-dev-001 `
   --name stack-demo-foundry-dev-001-workload `
-  --template-file ./azure-foundry/baseline/003-deploy-foundry/main.bicep `
+  --template-file ./azure-foundry-llm/baseline/003-deploy-llm/main.bicep `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
   --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified
@@ -85,16 +85,17 @@ This creates the following Azure Resources (using the default settings):
 | Foundry account                  | `aif-demo-dev-{orgId}-001`           | Current `Microsoft.CognitiveServices/accounts` resource, kind `AIServices` |
 | Foundry project                  | `proj-demo-dev-001`                  | Child project under the account                                            |
 | Application Insights connections | `aif-...-appinsights` and `appi-...` | Account- and project-scoped tracing connections                            |
+| Model deployment                 | `gpt-6-1-terra-dev-001`              | Model deployment on the Foundry account (default `gpt-6.1-terra`)          |
 
-You can override parameters or use an existing Azure Monitor Application
-Insights resource, for example:
+You can override parameters, deploy a different model, or use an existing
+Azure Monitor Application Insights resource, for example:
 
 ```powershell
 az stack group create `
   --resource-group rg-demo-foundry-dev-001 `
   --name stack-mydemo-foundry-test-001-workload `
-  --template-file ./azure-foundry/baseline/003-deploy-foundry/main.bicep `
-  --parameters orgId=MyOrg purpose=MyDemo environment=Test instance=001 applicationInsightsName=appi-existing applicationInsightsResourceGroupName=rg-monitoring `
+  --template-file ./azure-foundry-llm/baseline/003-deploy-llm/main.bicep `
+  --parameters orgId=MyOrg purpose=MyDemo environment=Test instance=001 applicationInsightsName=appi-existing applicationInsightsResourceGroupName=rg-monitoring modelName=gpt-6-astra modelVersion=<version> `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
   --tags env=test region=australiaeast criticality=low businessunit=mydemo confidentiality=unclassified
