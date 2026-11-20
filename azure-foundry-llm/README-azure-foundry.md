@@ -3,6 +3,37 @@
 Repeatable Bicep deployment of an Azure AI Foundry account and project with
 Azure Monitor integration for agent tracing.
 
+## Model selection
+
+The models below are open-weight models with an OSI-approved licence, sold directly by Azure in Foundry
+(pay per token, no Marketplace subscription). They are ranked by suitability for agentic coding, which
+needs tool calling and a long context.
+
+The list was last checked in November 2026.
+
+| Model format | Model name               | Model version | Licence    | Notes                                                                                                                        |
+| ------------ | ------------------------ | ------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `DeepSeek`   | `DeepSeek-V4-Pro`        | `2026-04-23`  | MIT        | 1.6T MoE (49B active). Strongest open coding and agentic model in the catalogue.                                             |
+| `DeepSeek`   | `DeepSeek-V4-Flash-0731` | `2026-07-31`  | MIT        | Smaller, faster and cheaper V4 variant. A good default for interactive coding agents.                                        |
+| `OpenAI-OSS` | `gpt-oss-120b`           | `1`           | Apache 2.0 | OpenAI open-weight reasoning model with function calling and structured outputs. Preview. Needs a Foundry project to deploy. |
+| `Mistral AI` | `Mistral-Large-3`        | `1`           | Apache 2.0 | 675B MoE (41B active). Good general and coding model, strong on European languages. Preview.                                 |
+| `DeepSeek`   | `DeepSeek-V3.2`          | `1`           | MIT        | Previous generation, now superseded by V4.                                                                                   |
+
+Excluded:
+
+- `Kimi-K2.7-Code` (Moonshot AI) is the catalogue's dedicated coding model and a strong candidate. It is
+  left out of the table because it uses a Modified MIT licence .
+- Meta Llama uses the Llama Community Licence, which is not OSI-approved. Foundry also lists it without
+  tool calling.
+
+To check the current model formats, names, versions and SKUs in your region:
+
+```powershell
+az cognitiveservices model list --location australiaeast `
+  --query "[?model.format!='OpenAI'].{format:model.format, name:model.name, version:model.version, skus:join(',', model.skus[].name)}" `
+  -o table
+```
+
 ## Prerequisites
 
 - Azure CLI 2.61.0 or later with Bicep support.
@@ -20,25 +51,25 @@ az account set --subscription <subscription-id>
 
 ## Initialise the resource group
 
-Note: If you have already been provided a resource group, you can skip this step and go straight to **Deploying shared observability**. This avoids requiring subscription-level permissions.
+Note: If you have already been provided a resource group, you can skip this step and go straight to **Deploying shared services**. This avoids requiring subscription-level permissions.
 
 To initialise a Resource Group:
 
 ```powershell
 az stack sub create `
-  --name stack-demo-foundry-dev-001-init `
+  --name stack-foundry-llm-dev-001-init `
   --location australiaeast `
   --template-file ./azure-foundry-llm/baseline/001-init-foundry-rg/main.bicep `
   --action-on-unmanage detachAll `
   --deny-settings-mode none `
-  --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified
+  --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
 ```
 
 This creates the following Azure Resources (using the default settings):
 
-| Resource       | Default naming pattern    | Purpose            |
-| -------------- | ------------------------- | ------------------ |
-| Resource group | `rg-demo-foundry-dev-001` | Demo deployment RG |
+| Resource       | Default naming pattern   | Purpose           |
+| -------------- | ------------------------ | ----------------- |
+| Resource group | `rg-foundry-llm-dev-001` | LLM deployment RG |
 
 The default `orgId` is derived deterministically from the subscription ID.
 All stacks apply the lowercase tag keys `env`, `region`, `criticality`,
@@ -51,51 +82,51 @@ Deploy the shared Azure Monitor resources within the resource group:
 
 ```powershell
 az stack group create `
-  --resource-group rg-demo-foundry-dev-001 `
-  --name stack-demo-foundry-dev-001-shared `
+  --resource-group rg-foundry-llm-dev-001 `
+  --name stack-foundry-llm-dev-001-shared `
   --template-file ./azure-foundry-llm/baseline/002-deploy-shared/main.bicep `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
-  --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified
+  --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
 ```
 
 This creates the following Azure Resources (using the default settings):
 
-| Resource                | Default naming pattern      | Purpose                                |
-| ----------------------- | --------------------------- | -------------------------------------- |
-| Log Analytics workspace | `log-demo-dev-{orgId}-001`  | Workspace backing Application Insights |
-| Application Insights    | `appi-demo-dev-{orgId}-001` | Observability foundation for workloads |
+| Resource                | Default naming pattern     | Purpose                                |
+| ----------------------- | -------------------------- | -------------------------------------- |
+| Log Analytics workspace | `log-llm-dev-{orgId}-001`  | Workspace backing Application Insights |
+| Application Insights    | `appi-llm-dev-{orgId}-001` | Observability foundation for workloads |
 
 ## Deploying the workload: Foundry account, project, and model
 
 ```powershell
 az stack group create `
-  --resource-group rg-demo-foundry-dev-001 `
-  --name stack-demo-foundry-dev-001-workload `
+  --resource-group rg-foundry-llm-dev-001 `
+  --name stack-foundry-llm-dev-001-workload `
   --template-file ./azure-foundry-llm/baseline/003-deploy-llm/main.bicep `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
-  --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified
+  --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
 ```
 
 This creates the following Azure Resources (using the default settings):
 
 | Resource                         | Default naming pattern               | Purpose                                                                    |
 | -------------------------------- | ------------------------------------ | -------------------------------------------------------------------------- |
-| Foundry account                  | `aif-demo-dev-{orgId}-001`           | Current `Microsoft.CognitiveServices/accounts` resource, kind `AIServices` |
-| Foundry project                  | `proj-demo-dev-001`                  | Child project under the account                                            |
+| Foundry account                  | `aif-llm-dev-{orgId}-001`            | Current `Microsoft.CognitiveServices/accounts` resource, kind `AIServices` |
+| Foundry project                  | `proj-llm-dev-001`                   | Child project under the account                                            |
 | Application Insights connections | `aif-...-appinsights` and `appi-...` | Account- and project-scoped tracing connections                            |
-| Model deployment                 | `gpt-6-1-terra-dev-001`              | Model deployment on the Foundry account (default `gpt-6.1-terra`)          |
+| Model deployment                 | `deepseek-v4-pro-dev-001`            | Model deployment on the Foundry account (default `DeepSeek-V4-Pro`)        |
 
 You can override parameters, deploy a different model, or use an existing
 Azure Monitor Application Insights resource, for example:
 
 ```powershell
 az stack group create `
-  --resource-group rg-demo-foundry-dev-001 `
-  --name stack-mydemo-foundry-test-001-workload `
+  --resource-group rg-foundry-llm-dev-001 `
+  --name stack-foundry-mydemo-test-001-workload `
   --template-file ./azure-foundry-llm/baseline/003-deploy-llm/main.bicep `
-  --parameters orgId=MyOrg purpose=MyDemo environment=Test instance=001 applicationInsightsName=appi-existing applicationInsightsResourceGroupName=rg-monitoring modelName=gpt-6-astra modelVersion=<version> `
+  --parameters orgId=MyOrg purpose=MyDemo environment=Test instance=001 applicationInsightsName=appi-existing applicationInsightsResourceGroupName=rg-monitoring modelFormat=OpenAI-OSS modelName=gpt-oss-120b modelVersion=<version> `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
   --tags env=test region=australiaeast criticality=low businessunit=mydemo confidentiality=unclassified
@@ -117,8 +148,8 @@ Delete the workload stack and its managed resources first:
 
 ```powershell
 az stack group delete `
-  --resource-group rg-demo-foundry-dev-001 `
-  --name stack-demo-foundry-dev-001-workload `
+  --resource-group rg-foundry-llm-dev-001 `
+  --name stack-foundry-llm-dev-001-workload `
   --action-on-unmanage deleteResources
 ```
 
@@ -126,8 +157,8 @@ Then delete the shared stack:
 
 ```powershell
 az stack group delete `
-  --resource-group rg-demo-foundry-dev-001 `
-  --name stack-demo-foundry-dev-001-shared `
+  --resource-group rg-foundry-llm-dev-001 `
+  --name stack-foundry-llm-dev-001-shared `
   --action-on-unmanage deleteResources
 ```
 
@@ -135,7 +166,7 @@ Finally, delete the init stack and resource group (this also deletes anything el
 
 ```powershell
 az stack sub delete `
-  --name stack-demo-foundry-dev-001-init `
+  --name stack-foundry-llm-dev-001-init `
   --action-on-unmanage deleteAll
 ```
 
@@ -143,8 +174,8 @@ The AI Foundry will soft delete, so you need to purge if you want to re-run:
 
 ```
 az cognitiveservices account purge `
-  --resource-group rg-demo-foundry-dev-001 `
-  --name aif-demo-dev-buf5ue-001 `
+  --resource-group rg-foundry-llm-dev-001 `
+  --name aif-llm-dev-buf5ue-001 `
   --location australiaeast
 ```
 
@@ -177,19 +208,3 @@ In Azure Portal, when creating Foundry:
 - Can link to App Insights
 - Can set inbound and outbound networking
 - Can set User-assigned identity (or System-assigned)
-
-## Ideas: deployment
-
-- Break up into stacks 001, 002, 003, etc
-- Have deployments 20261112*, yyyymmdd*,etc (could add hhmm\_)
-- A deployment only replaces the stacks it has defined, run in numerical order.
-- Have pre-incremental-deployment and post-incremental-deployment scripts
-
-- A clean one-shot deployment just combines the latest version of each stack, in order
-- Has pre- and post- full deployment scripts
-
-- Define a store (storage account ?) for completed scripts.
-- Stores the completed incremental deployments
-- Incremental deployment runs the missing ones, one at a time.
-
-- Overkill for demo scripts ... demo scripts count as the first deployment, with all stacks.

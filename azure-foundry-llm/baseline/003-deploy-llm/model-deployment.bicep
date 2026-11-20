@@ -22,8 +22,9 @@ param deploymentName string
   'Microsoft'
   'Mistral AI'
   'OpenAI'
+  'OpenAI-OSS'
 ])
-@description('Model format (e.g., OpenAI).')
+@description('Model format (e.g., DeepSeek, OpenAI-OSS).')
 param modelFormat string
 
 @description('Model identifier or name to deploy (e.g., gpt-6.1-terra, gpt-6-astra, claude-opus-5.5).')

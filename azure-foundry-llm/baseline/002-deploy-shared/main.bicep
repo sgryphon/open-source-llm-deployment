@@ -1,7 +1,7 @@
 /*
 Creates, idempotently via Azure Resource Manager:
-  - Log Analytics workspace `log-demo-dev-<orgId>-001`
-  - Workspace-based Application Insights `appi-demo-dev-<orgId>-001`
+  - Log Analytics workspace `log-llm-dev-<orgId>-001`
+  - Workspace-based Application Insights `appi-llm-dev-<orgId>-001`
 
 This stack deploys shared observability resources at the resource group level.
 These resources can be referenced by other workload deployments within the same
@@ -20,18 +20,18 @@ Notes:
 
 Example:
   az stack group create `
-    --resource-group 'rg-demo-foundry-dev-001' `
-    --name 'stack-demo-foundry-dev-001-shared' `
+    --resource-group 'rg-foundry-llm-dev-001' `
+    --name 'stack-foundry-llm-dev-001-shared' `
     --template-file './azure-foundry-llm/baseline/002-deploy-shared/main.bicep' `
     --action-on-unmanage deleteResources `
     --deny-settings-mode none `
-    --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified
+    --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
 */
 
 @description('Workload or business-unit identifier. Use a short name-safe value.')
 @minLength(1)
 @maxLength(12)
-param purpose string = 'Demo'
+param purpose string = 'LLM'
 
 @description('Environment tag and name component.')
 @minLength(1)

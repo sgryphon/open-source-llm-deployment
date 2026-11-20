@@ -1,7 +1,7 @@
 /*
 Creates, idempotently via Azure Resource Manager:
-  - Azure AI Foundry account `aif-demo-dev-<orgId>-001`
-  - Foundry project `proj-demo-dev-001`
+  - Azure AI Foundry account `aif-llm-dev-<orgId>-001`
+  - Foundry project `proj-llm-dev-001`
   - Application Insights connections on the account and project
   - Model deployment `<modelName>-<environment>-<instance>` on the account
 
@@ -17,32 +17,32 @@ before deploying this workload stack.
 Notes:
   Running this requires Azure CLI and an authenticated subscription context.
   The organization identifier is derived deterministically from the
-  subscription ID. The default model is gpt-6.1-terra; override with the
-  modelName and modelVersion parameters as needed.
+  subscription ID. The default model is DeepSeek-V4-Pro; override with the
+  modelFormat, modelName and modelVersion parameters as needed.
   Follow Azure Cloud Adoption Framework naming and tagging conventions:
   https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming
   https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-tagging
 
 Example:
   az stack group create `
-    --resource-group 'rg-demo-foundry-dev-001' `
-    --name 'stack-demo-foundry-dev-001-workload' `
+    --resource-group 'rg-foundry-llm-dev-001' `
+    --name 'stack-foundry-llm-dev-001-workload' `
     --template-file './azure-foundry-llm/baseline/003-deploy-llm/main.bicep' `
     --action-on-unmanage deleteResources `
     --deny-settings-mode none `
-    --tags env=dev region=australiaeast criticality=low businessunit=demo confidentiality=unclassified
+    --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
 
 View:
-  $foundryName = (az cognitiveservices account list --resource-group 'rg-demo-foundry-dev-001' --query '[0].name' -o tsv)
+  $foundryName = (az cognitiveservices account list --resource-group 'rg-foundry-llm-dev-001' --query '[0].name' -o tsv)
   Write-Output $foundryName
   az cognitiveservices account deployment list `
-    --resource-group 'rg-demo-foundry-dev-001' `
+    --resource-group 'rg-foundry-llm-dev-001' `
     --name $foundryName
 
 Cleanup:
   az stack group delete `
-    --resource-group 'rg-demo-foundry-dev-001' `
-    --name 'stack-demo-foundry-dev-001-workload' `
+    --resource-group 'rg-foundry-llm-dev-001' `
+    --name 'stack-foundry-llm-dev-001-workload' `
     --action-on-unmanage deleteResources `
     --yes
 */
@@ -50,7 +50,7 @@ Cleanup:
 @description('Workload or business-unit identifier. Use a short name-safe value.')
 @minLength(1)
 @maxLength(12)
-param purpose string = 'Demo'
+param purpose string = 'LLM'
 
 @description('Environment tag and name component.')
 @minLength(1)
@@ -93,19 +93,20 @@ param applicationInsightsResourceGroupName string = resourceGroup().name
   'Microsoft'
   'Mistral AI'
   'OpenAI'
+  'OpenAI-OSS'
 ])
-@description('Model format (e.g., OpenAI).')
-param modelFormat string = 'OpenAI'
+@description('Model format (e.g., DeepSeek, OpenAI-OSS).')
+param modelFormat string = 'DeepSeek'
 
-@description('Model identifier or name to deploy (e.g., gpt-6.1-terra, gpt-6-astra, claude-opus-5.5).')
+@description('Model identifier or name to deploy (e.g., DeepSeek-V4-Pro, DeepSeek-V4-Flash-0731, gpt-oss-120b).')
 @minLength(1)
 @maxLength(64)
-param modelName string = 'gpt-6.1-terra'
+param modelName string = 'DeepSeek-V4-Pro'
 
 @description('Model version to deploy.')
 @minLength(1)
 @maxLength(64)
-param modelVersion string = '2026-10-26'
+param modelVersion string = '2026-04-23'
 
 @allowed([
   'GlobalStandard'
