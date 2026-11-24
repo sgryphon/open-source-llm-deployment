@@ -9,7 +9,7 @@ No IAM users, roles or policies are created.
 
 ## Prerequisites
 
-- PowerShell 7+, AWS CLI v2 and Python 3 (all included in the devcontainer).
+- Python 3 and AWS CLI v2 (both included in the devcontainer).
 - An AWS sign-in whose role allows Bedrock inference on the `bedrock-mantle` endpoint:
   `bedrock-mantle:CreateInference` and `bedrock-mantle:CallWithBearerToken`. If you're not sure,
   the test below will tell you.
@@ -17,18 +17,27 @@ No IAM users, roles or policies are created.
 ## Setup
 
 Create a Python virtual environment for this example and install its dependencies from
-[requirements.txt](requirements.txt). This only needs doing once per clone; the scripts use
-`aws-bedrock-llm/.venv` automatically.
+[requirements.txt](requirements.txt). Create it once per clone, then activate it in each new
+terminal. The commands below assume you are in the `aws-bedrock-llm` folder with the virtual
+environment active.
 
-From the `aws-bedrock-llm` folder:
+Windows PowerShell:
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1  # Windows PowerShell
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-**Note:** Inside the devcontainer use `python3` and the shell scripts.
+Devcontainer (PowerShell on Linux):
+
+```powershell
+python3 -m venv .venv
+./.venv/bin/Activate.ps1
+pip install -r requirements.txt
+```
+
+In bash, activate with `source .venv/bin/activate` instead.
 
 ## Endpoint
 
@@ -68,10 +77,12 @@ The list was last checked in November 2026.
 Sign in, then generate a key:
 
 ```powershell
-aws sso login --profile <profile>
-$ENV:AWS_PROFILE = '<profile>'
-$ENV:BEDROCK_API_KEY = ./aws-bedrock-llm/Get-BedrockApiKey.ps1
+aws login
+$ENV:BEDROCK_API_KEY = python get_bedrock_api_key.py
 ```
+
+In bash: `export BEDROCK_API_KEY=$(python get_bedrock_api_key.py)`. Add `-v` to see progress, or
+`--region <region>` for a region other than Sydney (or set `AWS_REGION`).
 
 The key lasts up to 12 hours, or until your AWS session expires if sooner, and only works in the
 region it was generated for. Generate a new one each day. Treat it like a password.
@@ -79,11 +90,11 @@ region it was generated for. Generate a new one each day. Treat it like a passwo
 ## Test
 
 ```powershell
-./aws-bedrock-llm/Test-BedrockModel.ps1
+python check_bedrock_model.py
 ```
 
 This lists the models available to you, then sends a short prompt to `openai.gpt-oss-120b`. Use
-`-ModelId <id>` to test another model.
+`--model <id>` to test another model; `--help` lists all options.
 
 If it fails:
 
@@ -91,7 +102,7 @@ If it fails:
   account owner to add them.
 - **401 or "expired":** generate a new key.
 - **"isn't supported on this route":** run again with
-  `-BaseUrl https://bedrock-mantle.ap-southeast-2.api.aws/openai/v1`.
+  `--base-url https://bedrock-mantle.ap-southeast-2.api.aws/openai/v1`.
 
 ## Connect VS Code
 

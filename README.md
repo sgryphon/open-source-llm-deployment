@@ -8,6 +8,19 @@ Connect your local AI tools to an open source LLM, run in a private environment 
 
 ## Examples
 
+### AWS Bedrock
+
+Open-weight model hosted by Amazon Bedrock, called through the in-region OpenAI-compatible
+`bedrock-mantle` endpoint with a short-term API key. Nothing to deploy.
+
+See `aws-bedrock-llm`
+
+### Azure AI Foundry
+
+Open-weight model as a Foundry serverless deployment.
+
+See `azure-foundry-llm`
+
 ### Azure VM LLM
 
 Work in progress
