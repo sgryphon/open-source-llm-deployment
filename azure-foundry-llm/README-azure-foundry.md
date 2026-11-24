@@ -9,6 +9,10 @@ The models below are open-weight models with an OSI-approved licence, sold direc
 (pay per token, no Marketplace subscription). They are ranked by suitability for agentic coding, which
 needs tool calling and a long context.
 
+**Note:** These models run as a global deployment, not a regional one, even when the Foundry account is in
+an Australian region. Prompts and responses may be processed in any Azure region. Data at rest stays in the
+account's geography.
+
 The list was last checked in November 2026.
 
 | Model format | Model name               | Model version | Licence    | Notes                                                                                                                        |
@@ -22,7 +26,7 @@ The list was last checked in November 2026.
 Excluded:
 
 - `Kimi-K2.7-Code` (Moonshot AI) is the catalogue's dedicated coding model and a strong candidate. It is
-  left out of the table because it uses a Modified MIT licence .
+  left out of the table because it uses a Modified MIT licence.
 - Meta Llama uses the Llama Community Licence, which is not OSI-approved. Foundry also lists it without
   tool calling.
 

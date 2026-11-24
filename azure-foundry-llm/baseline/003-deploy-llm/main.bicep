@@ -120,7 +120,7 @@ param skuName string = 'GlobalStandard'
 
 @description('Capacity (quota) units for the model deployment. 1 quota unit is 1,000 tokens/minute.')
 @minValue(1)
-param skuCapacity int = 150
+param skuCapacity int = 20
 
 @description('Content filter policy name')
 param contentFilterPolicyName string = 'Microsoft.DefaultV2'
