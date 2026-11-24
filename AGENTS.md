@@ -71,3 +71,4 @@ Guidance for AI coding agents and new contributors. Deliberately short. See
 - Python (boto3) for simple tasks and API access; AWS CLI is fine for quick checks in docs.
 - CDK for larger infrastructure.
 - VPCs use an Amazon-provided IPv6 `/56`; subnets are `/64` slices of it.
+- Tags follow [AWS tagging best practices](https://docs.aws.amazon.com/tag-editor/latest/userguide/best-practices-and-strats.html): `Name` (title case, shown in the console), then lowercase, hyphenated keys with a `demo:` prefix, e.g. `demo:owner`, `demo:classification`.
