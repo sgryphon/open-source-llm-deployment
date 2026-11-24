@@ -21,6 +21,13 @@ param applicationInsightsResourceGroupName string
 @description('Tags applied to all resources that support tags.')
 param tags object
 
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+@description('Public network access for the Foundry account. Set explicitly; some operations reject requests when it is omitted.')
+param publicNetworkAccess string = 'Enabled'
+
 var location = resourceGroup().location
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
@@ -43,6 +50,10 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     allowProjectManagement: true
     customSubDomainName: foundryName
     disableLocalAuth: false
+    publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: publicNetworkAccess == 'Enabled' ? 'Allow' : 'Deny'
+    }
   }
 }
 

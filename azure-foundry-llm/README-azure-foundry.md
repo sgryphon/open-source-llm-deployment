@@ -63,7 +63,7 @@ To initialise a Resource Group:
 az stack sub create `
   --name stack-foundry-llm-dev-001-init `
   --location australiaeast `
-  --template-file ./azure-foundry-llm/baseline/001-init-foundry-rg/main.bicep `
+  --template-file ./azure-foundry-llm/001-init-foundry-rg/main.bicep `
   --action-on-unmanage detachAll `
   --deny-settings-mode none `
   --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
@@ -88,7 +88,7 @@ Deploy the shared Azure Monitor resources within the resource group:
 az stack group create `
   --resource-group rg-foundry-llm-dev-001 `
   --name stack-foundry-llm-dev-001-shared `
-  --template-file ./azure-foundry-llm/baseline/002-deploy-shared/main.bicep `
+  --template-file ./baseline/002-deploy-shared/main.bicep `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
   --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
@@ -107,7 +107,7 @@ This creates the following Azure Resources (using the default settings):
 az stack group create `
   --resource-group rg-foundry-llm-dev-001 `
   --name stack-foundry-llm-dev-001-workload `
-  --template-file ./azure-foundry-llm/baseline/003-deploy-llm/main.bicep `
+  --template-file ./baseline/003-deploy-llm/main.bicep `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
   --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
@@ -129,11 +129,96 @@ Azure Monitor Application Insights resource, for example:
 az stack group create `
   --resource-group rg-foundry-llm-dev-001 `
   --name stack-foundry-mydemo-test-001-workload `
-  --template-file ./azure-foundry-llm/baseline/003-deploy-llm/main.bicep `
+  --template-file ./baseline/003-deploy-llm/main.bicep `
   --parameters orgId=MyOrg purpose=MyDemo environment=Test instance=001 applicationInsightsName=appi-existing applicationInsightsResourceGroupName=rg-monitoring modelFormat=OpenAI-OSS modelName=gpt-oss-120b modelVersion=<version> `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
-  --tags env=test region=australiaeast criticality=low businessunit=mydemo confidentiality=unclassified
+  --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
+```
+
+### Deploying a non-OSS model
+
+For testing OSS models may have tight rate limits. If you don't have high limits, you could try a model generous non-OSS model for testing.
+
+```powershell
+az stack group create `
+  --resource-group rg-foundry-llm-dev-001 `
+  --name stack-foundry-llm-dev-001-workload `
+  --template-file ./baseline/003-deploy-llm/main.bicep `
+  --parameters modelFormat=OpenAI modelName=gpt-6.2-sol modelVersion=2026-11-17 skuCapacity=250 `
+  --action-on-unmanage deleteResources `
+  --deny-settings-mode none `
+  --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
+```
+
+## Using the model
+
+The Foundry account exposes an OpenAI-compatible endpoint, so any tool that can talk to an
+OpenAI-compatible API can use the deployed model. You need three values: the endpoint URL, an API key,
+and the deployment name (which is used as the model id).
+
+```powershell
+$rg = 'rg-foundry-llm-dev-001'
+$foundry = az cognitiveservices account list --resource-group $rg | ConvertFrom-Json
+$apiKeys = az cognitiveservices account keys list --resource-group $rg --name $foundry.name | ConvertFrom-Json
+$deployment = az cognitiveservices account deployment list --resource-group $rg --name $foundry.name | ConvertFrom-Json
+
+$modelUrl = "$($foundry.properties.endpoints.'AI Foundry API')/openai/v1/chat/completions"
+$modelId = $deployment.name
+
+Write-Output "Model URL: $modelUrl"
+Write-Output "Model ID: $modelId"
+```
+
+Check the model responds before configuring any tools:
+
+```powershell
+$body = @{
+  model    = $modelId
+  messages = @(@{ role = 'user'; content = 'Say hello in five words.' })
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Method Post -Uri $modelUrl `
+  -Headers @{ 'api-key' = $apiKeys.key1 } -ContentType 'application/json' -Body $body |
+  Select-Object -ExpandProperty choices | ForEach-Object { $_.message.content }
+```
+
+Treat the API key like a password. Don't paste it into files that are committed to the repo. If it
+leaks, rotate it with `az cognitiveservices account keys regenerate --key-name key1 ...`.
+
+### VS Code
+
+These steps use GitHub Copilot Chat's "bring your own key" support. You need the GitHub Copilot Chat
+extension and a Copilot plan that allows custom models (on Copilot Business and Enterprise, your
+organisation admin may need to enable this policy).
+
+1. In VS Code, make sure the GitHub Copilot for Azure extension is installed
+2. Open the Chat sidebar and click the model picker at the bottom
+3. Select Add Models... (plus)
+4. On the models screen, click Add Models and select Custom Endpoint
+5. You can use the default group name 'Custom Endpoint', then enter the API Key
+6. For API Type, use Responses API for modern models (Chat Completion is older but widely supported, Messages API is for Anthropic)
+
+You will need to manually complete the models section in chatLanguageModels.json with your Foundry URL and Model ID. Modify settings as needed, e.g. for Deepseek v4 Pro set vision = false.
+
+```json
+{
+  "name": "Custom Endpoint",
+  "vendor": "customendpoint",
+  "apiKey": "${input:chat.lm.secret.-1437e28d}",
+  "apiType": "responses",
+  "models": [
+    {
+      "id": "deepseek-v4-pro-dev-001",
+      "name": "Deepseek v4 Pro",
+      "url": "https://aif-llm-dev-buf5ue-001.services.ai.azure.com/openai/v1",
+      "toolCalling": true,
+      "vision": false,
+      "maxInputTokens": 128000,
+      "maxOutputTokens": 16000
+    }
+  ]
+}
 ```
 
 ## Stack lifecycle

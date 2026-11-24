@@ -136,6 +136,13 @@ param confidentiality string = 'Unclassified'
 @description('Criticality tag.')
 param criticality string = 'low'
 
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+@description('Public network access for the Foundry account.')
+param publicNetworkAccess string = 'Enabled'
+
 var tags = {
   env: toLower(environment)
   region: resourceGroup().location
@@ -152,6 +159,7 @@ module aiFoundry './ai-foundry.bicep' = {
     applicationInsightsName: applicationInsightsName
     applicationInsightsResourceGroupName: applicationInsightsResourceGroupName
     tags: tags
+    publicNetworkAccess: publicNetworkAccess
   }
 }
 
