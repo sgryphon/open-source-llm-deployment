@@ -84,8 +84,13 @@ $ENV:BEDROCK_API_KEY = python get_bedrock_api_key.py
 In bash: `export BEDROCK_API_KEY=$(python get_bedrock_api_key.py)`. Add `-v` to see progress, or
 `--region <region>` for a region other than Sydney (or set `AWS_REGION`).
 
-The key lasts up to 12 hours, or until your AWS session expires if sooner, and only works in the
-region it was generated for. Generate a new one each day. Treat it like a password.
+The key only lasts as long as the AWS credentials it was signed with (maximum 12 hours). With
+`aws login` that is about 15 minutes, because `aws login` issues 15-minute credentials (the CLI
+refreshes them, but an existing key keeps the old ones). Re-run the command above when the key
+expires. Signing in with IAM Identity Center (`aws sso login`) may give you up to 12 hours,
+depending on your permission set's session duration.
+
+The key only works in the region it was generated for. Treat it like a password.
 
 ## Test
 
@@ -167,6 +172,11 @@ and Enterprise, an admin may need to enable the policy).
 Copilot stores the key, so you need to re-enter it when it expires. Check each model card for its
 context and output limits.
 
+If Copilot reports "static system messages and tool definitions exceed this model's context
+budget", too many tools are enabled: agent mode sends every MCP server's tool definitions with each
+request. Use **Configure Tools** in the Chat view to untick MCP servers you don't need, or disable
+extensions that contribute them.
+
 ## Data residency
 
 A summary for engineering use, not a compliance statement.
@@ -204,7 +214,7 @@ aws login
 $vpcId = aws ec2 create-vpc `
   --cidr-block 10.20.0.0/16 `
   --amazon-provided-ipv6-cidr-block `
-  --tag-specifications "ResourceType=vpc,Tags=[{Key=Name,Value=LlmNetwork-Dev/VPC},{Key=aws-cdk-ex:vpc-protocol,Value=DualStack},{Key=Owner,Value=LLM Lab},{Key=Classification,Value=Confidential}]" `
+  --tag-specifications "ResourceType=vpc,Tags=[{Key=Name,Value=LlmNetwork-Dev/VPC},{Key=aws-cdk-ex:vpc-protocol,Value=DualStack},{Key=demo:owner,Value=LLM Lab},{Key=demo:classification,Value=Confidential}]" `
   --query Vpc.VpcId --output text
 
 $v6 = aws ec2 describe-vpcs --vpc-ids $vpcId `
@@ -213,5 +223,19 @@ $v6 = aws ec2 describe-vpcs --vpc-ids $vpcId `
 aws ec2 create-subnet --vpc-id $vpcId `
   --cidr-block 10.20.1.0/24 `
   --ipv6-cidr-block ($v6 -replace '/56$', '/64') `
-  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=LlmNetwork-Dev/PublicSubnet1},{Key=aws-cdk-ex:subnet-protocol,Value=DualStack},{Key=Owner,Value=LLM Lab},{Key=Classification,Value=Confidential}]"
+  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=LlmNetwork-Dev/PublicSubnet1},{Key=aws-cdk-ex:subnet-protocol,Value=DualStack},{Key=demo:owner,Value=LLM Lab},{Key=demo:classification,Value=Confidential}]"
+```
+
+Clean up (subnets first, then the VPC):
+
+```powershell
+$vpcId = aws ec2 describe-vpcs --filters "Name=tag:Name,Values=LlmNetwork-Dev/VPC" `
+  --query 'Vpcs[0].VpcId' --output text
+
+aws ec2 describe-subnets --filters "Name=vpc-id,Values=$vpcId" `
+  --query 'Subnets[].SubnetId' --output text |
+  ForEach-Object { $_ -split '\s+' } | Where-Object { $_ } |
+  ForEach-Object { aws ec2 delete-subnet --subnet-id $_ }
+
+aws ec2 delete-vpc --vpc-id $vpcId
 ```

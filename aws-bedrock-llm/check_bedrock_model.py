@@ -60,7 +60,9 @@ def main() -> None:
         help="Bedrock API key (default: BEDROCK_API_KEY)",
     )
     parser.add_argument("--skip-list", action="store_true", help="skip listing models")
-    parser.add_argument("-v", "--verbose", action="store_true", help="log progress to stderr")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="log progress to stderr"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -70,7 +72,9 @@ def main() -> None:
     )
 
     if not args.api_key:
-        sys.exit("No API key. Set BEDROCK_API_KEY from get_bedrock_api_key.py, or pass --api-key.")
+        sys.exit(
+            "No API key. Set BEDROCK_API_KEY from get_bedrock_api_key.py, or pass --api-key."
+        )
 
     base_url = args.base_url or f"https://bedrock-mantle.{args.region}.api.aws/v1"
     client = OpenAI(base_url=base_url, api_key=args.api_key)
