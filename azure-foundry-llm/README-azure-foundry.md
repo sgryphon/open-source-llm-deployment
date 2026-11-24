@@ -136,6 +136,8 @@ az stack group create `
   --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
 ```
 
+**Note:** Currently (Nov 2026) the endpoint address, e.g. `aif-llm-dev-buf5ue-001.services.ai.azure.com`, is IPv4 only.
+
 ### Deploying a non-OSS model
 
 For testing OSS models may have tight rate limits. If you don't have high limits, you could try a model generous non-OSS model for testing.
