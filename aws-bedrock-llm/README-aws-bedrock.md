@@ -72,17 +72,13 @@ Kimi K2.5 and Devstral 2 are also available but use modified licences.
 
 The list was last checked in November 2026.
 
-## Get an API key
+## Login to AWS
 
-Sign in, then generate a key:
+Sign in to AWS:
 
 ```powershell
 aws login
-$ENV:BEDROCK_API_KEY = python get_bedrock_api_key.py
 ```
-
-In bash: `export BEDROCK_API_KEY=$(python get_bedrock_api_key.py)`. Add `-v` to see progress, or
-`--region <region>` for a region other than Sydney (or set `AWS_REGION`).
 
 The key only lasts as long as the AWS credentials it was signed with (maximum 12 hours). With
 `aws login` that is about 15 minutes, because `aws login` issues 15-minute credentials (the CLI
@@ -90,9 +86,36 @@ refreshes them, but an existing key keeps the old ones). Re-run the command abov
 expires. Signing in with IAM Identity Center (`aws sso login`) may give you up to 12 hours,
 depending on your permission set's session duration.
 
+With an SSO identity you will need the start URL, SSO region, and permission set from your IT department:
+
+```powershell
+aws sso configure
+aws sso login
+```
+
+Other setups may use alternative ways to get credentials, e.g. with Stax you can use stax2aws, from https://github.com/stax-labs/stax2aws-releases
+
+```
+..\temp\stax2aws.exe login -i stax-au1 -o versent-innovation --profile innovation --session-duration 28800
+```
+
+Login to Stax via your browser, then select the relevant profile.
+
+## Get an API key
+
+To generate a key:
+
+```powershell
+./.venv/bin/Activate.ps1
+$ENV:BEDROCK_API_KEY = python get_bedrock_api_key.py
+```
+
+In bash: `export BEDROCK_API_KEY=$(python get_bedrock_api_key.py)`. Add `-v` to see progress, or
+`--region <region>` for a region other than Sydney (or set `AWS_REGION`).
+
 The key only works in the region it was generated for. Treat it like a password.
 
-## Test
+### Test
 
 ```powershell
 python check_bedrock_model.py
@@ -110,33 +133,6 @@ If it fails:
   `--base-url https://bedrock-mantle.ap-southeast-2.api.aws/openai/v1`.
 
 ## Connect VS Code
-
-### OpenCode
-
-OpenCode (installed in the devcontainer, with a VS Code extension) reads the key from the
-environment, so a fresh key only needs `$ENV:BEDROCK_API_KEY` set before starting it. Add a
-provider to `opencode.json` in your project or `~/.config/opencode/opencode.json`:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "bedrock-mantle": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Amazon Bedrock (Sydney)",
-      "options": {
-        "baseURL": "https://bedrock-mantle.ap-southeast-2.api.aws/v1",
-        "apiKey": "{env:BEDROCK_API_KEY}"
-      },
-      "models": {
-        "openai.gpt-oss-120b": { "name": "gpt-oss-120b" }
-      }
-    }
-  }
-}
-```
-
-Then pick the model with `/models`.
 
 ### GitHub Copilot Chat
 
@@ -176,6 +172,33 @@ If Copilot reports "static system messages and tool definitions exceed this mode
 budget", too many tools are enabled: agent mode sends every MCP server's tool definitions with each
 request. Use **Configure Tools** in the Chat view to untick MCP servers you don't need, or disable
 extensions that contribute them.
+
+### OpenCode
+
+OpenCode (installed in the devcontainer, with a VS Code extension) reads the key from the
+environment, so a fresh key only needs `$ENV:BEDROCK_API_KEY` set before starting it. Add a
+provider to `opencode.json` in your project or `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "bedrock-mantle": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Amazon Bedrock (Sydney)",
+      "options": {
+        "baseURL": "https://bedrock-mantle.ap-southeast-2.api.aws/v1",
+        "apiKey": "{env:BEDROCK_API_KEY}"
+      },
+      "models": {
+        "openai.gpt-oss-120b": { "name": "gpt-oss-120b" }
+      }
+    }
+  }
+}
+```
+
+Then pick the model with `/models`.
 
 ## Data residency
 

@@ -13,7 +13,13 @@
 [CmdletBinding()]
 param ()
 
-Write-Verbose "Removing resource group. You need to purge the Foundry in you want to recreate."
+Write-Verbose "Removing resource group."
 az stack sub delete `
   --name stack-foundry-llm-dev-001-init `
   --action-on-unmanage deleteAll
+
+Write-Verbose "Purging Foundry (so it can be recreated)."
+az cognitiveservices account purge `
+  --resource-group rg-foundry-llm-dev-001 `
+  --name aif-llm-dev-buf5ue-001 `
+  --location australiaeast
