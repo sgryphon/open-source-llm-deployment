@@ -140,14 +140,14 @@ az stack group create `
 
 ### Deploying a non-OSS model
 
-For testing OSS models may have tight rate limits. If you don't have high limits, you could try a model generous non-OSS model for testing.
+For testing OSS models may have tight rate limits. If you don't have high limits, you could try a model generous non-OSS model for testing. Non-OSS models may also have Data Zone support.
 
 ```powershell
 az stack group create `
   --resource-group rg-foundry-llm-dev-001 `
   --name stack-foundry-llm-dev-001-workload `
   --template-file ./baseline/003-deploy-llm/main.bicep `
-  --parameters modelFormat=OpenAI modelName=gpt-6.2-sol modelVersion=2026-11-17 skuCapacity=250 `
+  --parameters modelFormat=OpenAI modelName=gpt-6.2-sol modelVersion=2026-11-17 skuName=DataZoneStandard skuCapacity=250 `
   --action-on-unmanage deleteResources `
   --deny-settings-mode none `
   --tags env=dev region=australiaeast criticality=low businessunit=llm confidentiality=unclassified
@@ -165,7 +165,7 @@ $foundry = az cognitiveservices account list --resource-group $rg | ConvertFrom-
 $apiKeys = az cognitiveservices account keys list --resource-group $rg --name $foundry.name | ConvertFrom-Json
 $deployment = az cognitiveservices account deployment list --resource-group $rg --name $foundry.name | ConvertFrom-Json
 
-$modelUrl = "$($foundry.properties.endpoints.'AI Foundry API')/openai/v1/chat/completions"
+$modelUrl = "$($foundry.properties.endpoints.'AI Foundry API')/openai/v1/responses"
 $modelId = $deployment.name
 
 Write-Output "Model URL: $modelUrl"
@@ -213,7 +213,7 @@ You will need to manually complete the models section in chatLanguageModels.json
     {
       "id": "deepseek-v4-pro-dev-001",
       "name": "Deepseek v4 Pro",
-      "url": "https://aif-llm-dev-buf5ue-001.services.ai.azure.com/openai/v1",
+      "url": "https://aif-llm-dev-buf5ue-001.services.ai.azure.com/openai/v1/responses",
       "toolCalling": true,
       "vision": false,
       "maxInputTokens": 128000,
@@ -222,6 +222,8 @@ You will need to manually complete the models section in chatLanguageModels.json
   ]
 }
 ```
+
+Troubleshooting: If the model cannot handle your request size, try configuring with less tools (turn off the ones you aren't using).
 
 ## Stack lifecycle
 
